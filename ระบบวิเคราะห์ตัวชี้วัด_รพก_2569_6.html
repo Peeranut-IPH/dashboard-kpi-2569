@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบวิเคราะห์และสรุปตัวชี้วัดแผนปฏิบัติราชการ พ.ศ. 2569 | โรงพยาบาลกลาง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#F5F8F7;
+    --surface:#FFFFFF;
+    --surface-soft:#EEF3F1;
+    --ink:#12211D;
+    --ink-soft:#4A5A55;
+    --muted:#7C8B86;
+    --line:#DFE7E3;
+    --line-strong:#C7D3CE;
+    --primary:#0B6E52;
+    --primary-dark:#083F30;
+    --primary-tint:#E4F1EC;
+    --accent:#B5792E;
+    --accent-tint:#F7EDDD;
+    --ok:#1B8A5A;
+    --ok-tint:#E3F4EB;
+    --watch:#B5792E;
+    --watch-tint:#FBF0DE;
+    --risk:#AC3B2E;
+    --risk-tint:#FBE7E3;
+    --pending:#6E7B85;
+    --pending-tint:#EAEDF0;
+    --radius:14px;
+    --shadow: 0 1px 2px rgba(18,33,29,0.04), 0 8px 24px -12px rgba(18,33,29,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Kanit','Noto Sans Thai','IBM Plex Sans Thai',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-weight:400;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--primary); color:#fff; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  /* ===== Header ===== */
+  .topbar{
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 62%, #0E8064 100%);
+    color:#fff;
+    padding:36px 28px 46px;
+    position:relative;
+    overflow:hidden;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0 2px, transparent 2px 34px);
+    pointer-events:none;
+  }
+  .topbar-inner{ max-width:1280px; margin:0 auto; position:relative; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:13px; letter-spacing:.06em; font-weight:500;
+    color:rgba(255,255,255,0.86);
+    background:rgba(255,255,255,0.12);
+    border:1px solid rgba(255,255,255,0.22);
+    padding:6px 14px; border-radius:100px;
+    margin-bottom:16px;
+  }
+  .eyebrow .dot{ width:7px;height:7px;border-radius:50%; background:#7CF2C4; box-shadow:0 0 0 3px rgba(124,242,196,0.25); }
+  h1.hero{
+    font-size:clamp(26px, 3.6vw, 42px);
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+    max-width:920px;
+  }
+  .hero-sub{
+    font-size:16px; font-weight:300;
+    color:rgba(255,255,255,0.82);
+    max-width:640px;
+    margin:0;
+  }
+  .topbar-meta{
+    margin-top:26px;
+    display:flex; flex-wrap:wrap; gap:10px 28px; align-items:center;
+  }
+  .meta-chip{
+    display:flex; flex-direction:column; gap:2px;
+    background:rgba(255,255,255,0.10);
+    border:1px solid rgba(255,255,255,0.18);
+    padding:10px 16px; border-radius:10px;
+    min-width:150px;
+  }
+  .meta-chip span.label{ font-size:11.5px; color:rgba(255,255,255,0.68); font-weight:400; }
+  .meta-chip span.val{ font-size:15px; font-weight:600; }
+
+  /* ===== Layout ===== */
+  .wrap{ max-width:1280px; margin:0 auto; padding:0 28px; }
+  .lift{ margin-top:-26px; position:relative; z-index:2; }
+
+  /* ===== Stat cards ===== */
+  .stat-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:16px;
+  }
+  @media (max-width:900px){ .stat-grid{ grid-template-columns:1fr;} }
+  .stat-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px 22px;
+    position:relative;
+  }
+  .stat-card .num{ font-size:36px; font-weight:700; line-height:1; letter-spacing:-0.02em; }
+  .stat-card .lbl{ margin-top:8px; font-size:14px; color:var(--ink-soft); font-weight:500; }
+  .stat-card .sub{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .stat-card.k-total .num{ color:var(--primary-dark); }
+  .stat-card.k-ok .num{ color:var(--ok); }
+  .stat-card.k-watch .num{ color:var(--watch); }
+  .stat-card.k-risk .num{ color:var(--risk); }
+  .stat-icon{ position:absolute; top:18px; right:18px; width:10px; height:10px; border-radius:3px; }
+  .k-total .stat-icon{ background:var(--primary); }
+  .k-ok .stat-icon{ background:var(--ok); }
+  .k-watch .stat-icon{ background:var(--watch); }
+  .k-risk .stat-icon{ background:var(--risk); }
+
+  /* ===== Panels ===== */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px 24px;
+  }
+  .panel + .panel{ margin-top:18px; }
+  .panel-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .panel-title{ font-size:18px; font-weight:600; margin:0; color:var(--ink); }
+  .panel-title .n{ color:var(--muted); font-weight:400; font-size:13.5px; margin-left:8px;}
+  .panel-desc{ font-size:13.5px; color:var(--muted); margin:2px 0 0; }
+
+  .two-col{ display:grid; grid-template-columns:1.15fr 1fr; gap:18px; margin-top:18px; }
+  @media (max-width:920px){ .two-col{ grid-template-columns:1fr; } }
+
+  /* status legend bars */
+  .status-row{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px dashed var(--line); }
+  .status-row:last-child{ border-bottom:none; }
+  .status-chip{ width:12px; height:12px; border-radius:4px; flex:none; }
+  .status-name{ font-size:14.5px; font-weight:500; flex:none; width:112px; }
+  .status-track{ flex:1; height:9px; border-radius:6px; background:var(--surface-soft); overflow:hidden; }
+  .status-fill{ height:100%; border-radius:6px; }
+  .status-count{ font-size:15px; font-weight:700; width:26px; text-align:right; }
+
+  .cat-row{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px dashed var(--line); }
+  .cat-row:last-child{ border-bottom:none; }
+  .cat-name{ font-size:13.5px; font-weight:500; flex:none; width:150px; color:var(--ink-soft); }
+  .cat-track{ flex:1; height:9px; border-radius:6px; background:var(--surface-soft); overflow:hidden; }
+  .cat-fill{ height:100%; border-radius:6px; background:var(--primary); }
+  .cat-count{ font-size:15px; font-weight:700; width:26px; text-align:right; }
+
+  /* ===== Controls ===== */
+  .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .search-box{
+    flex:1; min-width:220px; position:relative;
+  }
+  .search-box input{
+    width:100%; padding:11px 14px 11px 38px; border-radius:10px; border:1px solid var(--line-strong);
+    font-family:'Kanit','Noto Sans Thai','IBM Plex Sans Thai',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14.5px; background:var(--surface-soft); color:var(--ink);
+  }
+  .search-box input:focus{ outline:2px solid var(--primary); outline-offset:1px; background:#fff; }
+  .search-box::before{
+    content:"⌕"; position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:16px;
+  }
+  select, .btn{
+    font-family:'Kanit','Noto Sans Thai','IBM Plex Sans Thai',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px; font-weight:500;
+    border-radius:10px; border:1px solid var(--line-strong);
+    padding:10px 14px; background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .btn-primary{ background:var(--primary); border-color:var(--primary); color:#fff; }
+  .btn-primary:hover{ background:var(--primary-dark); }
+  .btn-ghost{ background:#fff; }
+  .btn-ghost:hover{ background:var(--surface-soft); }
+  .btn-sm{ padding:7px 12px; font-size:13px; border-radius:8px; }
+
+  /* ===== Category tabs ===== */
+  .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .tab{
+    padding:9px 16px; border-radius:100px; border:1px solid var(--line-strong);
+    background:#fff; font-size:13.5px; font-weight:500; color:var(--ink-soft); cursor:pointer;
+    transition:all .15s ease;
+  }
+  .tab.active{ background:var(--primary); border-color:var(--primary); color:#fff; }
+  .tab .cnt{ opacity:.7; margin-left:4px; }
+
+  /* ===== KPI cards ===== */
+  .group-title{
+    display:flex; align-items:center; gap:10px;
+    margin:26px 0 12px; font-size:15px; font-weight:600; color:var(--primary-dark);
+  }
+  .group-title .line{ flex:1; height:1px; background:var(--line-strong); }
+  .group-title .badge{ background:var(--primary-tint); color:var(--primary-dark); font-size:12px; font-weight:600; padding:3px 10px; border-radius:100px; }
+
+  .kpi-card{
+    border:1px solid var(--line); border-radius:12px; background:#fff; margin-bottom:10px; overflow:hidden;
+  }
+  .kpi-main{
+    display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center;
+    padding:16px 18px; cursor:pointer;
+  }
+  .kpi-num{
+    width:30px; height:30px; border-radius:8px; background:var(--surface-soft); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; flex:none;
+  }
+  .kpi-body{ min-width:0; }
+  .kpi-name{ font-size:15px; font-weight:500; color:var(--ink); margin:0 0 4px; }
+  .kpi-proj{ font-size:12.5px; color:var(--muted); margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .kpi-right{ display:flex; align-items:center; gap:14px; flex:none; }
+  .kpi-target-mini{ text-align:right; }
+  .kpi-target-mini .t-lbl{ font-size:11px; color:var(--muted); }
+  .kpi-target-mini .t-val{ font-size:13.5px; font-weight:600; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .kpi-result-mini{ text-align:right; padding-right:14px; border-right:1px solid var(--line); }
+  .kpi-result-mini .t-lbl{ font-size:11px; color:var(--primary-dark); font-weight:600; }
+  .kpi-result-mini .t-val{ font-size:13.5px; font-weight:600; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+  .kpi-result-mini .t-val.empty{ color:var(--muted); font-weight:400; font-style:italic; }
+  .caret{ width:20px; height:20px; color:var(--muted); transition:transform .18s ease; flex:none; }
+  .kpi-card.open .caret{ transform:rotate(180deg); }
+
+  .kpi-detail{ display:none; padding:0 18px 18px; border-top:1px solid var(--line); }
+  .kpi-card.open .kpi-detail{ display:block; }
+  .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:16px; }
+  @media (max-width:760px){ .detail-grid{ grid-template-columns:1fr; } }
+  .detail-block .dk{ font-size:12px; font-weight:600; color:var(--primary-dark); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px; }
+  .detail-block .dv{ font-size:13.5px; color:var(--ink-soft); white-space:pre-line; }
+  .quarter-strip{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px; }
+  .q-box{ background:var(--surface-soft); border-radius:8px; padding:10px 12px; }
+  .q-box.q-latest{ background:var(--primary-tint); border:1px solid #BFE0D2; }
+  .q-box .ql{ font-size:11px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  .q-box.q-latest .ql{ color:var(--primary-dark); }
+  .q-box .qv{ font-size:12.5px; color:var(--ink-soft); white-space:pre-line; }
+  .q-box .qv.empty{ color:var(--muted); font-style:italic; }
+
+  /* bullet / goal bar - signature element */
+  .goalbar-wrap{ margin-top:16px; }
+  .goalbar-label{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .goalbar{ position:relative; height:16px; background:var(--surface-soft); border-radius:8px; overflow:visible; }
+  .goalbar-fill{ height:100%; border-radius:8px; transition:width .4s ease; }
+  .goalbar-target{ position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); opacity:.55; }
+  .goalbar-target::after{ content:"เป้าหมาย"; position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--ink-soft); white-space:nowrap; }
+
+  .status-badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+    padding:5px 11px; border-radius:100px; flex:none;
+  }
+  .status-badge .d{ width:7px; height:7px; border-radius:50%; }
+  .sb-ok{ background:var(--ok-tint); color:var(--ok); }
+  .sb-watch{ background:var(--watch-tint); color:var(--watch); }
+  .sb-risk{ background:var(--risk-tint); color:var(--risk); }
+  .sb-pending{ background:var(--pending-tint); color:var(--pending); }
+
+  .calc-note{ margin-top:14px; font-size:12px; color:var(--muted); background:var(--surface-soft); border-radius:8px; padding:10px 12px; border-left:3px solid var(--accent); }
+  .edit-btn{ margin-top:14px; }
+
+  /* ===== Part 3 table ===== */
+  table.p3{ width:100%; border-collapse:collapse; margin-top:6px; }
+  table.p3 th{ text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); font-weight:600; padding:10px 12px; border-bottom:2px solid var(--line-strong); }
+  table.p3 td{ font-size:13.5px; padding:12px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  table.p3 tr:hover td{ background:var(--surface-soft); }
+  .p3-name{ color:var(--ink); font-weight:500; }
+  .p3-cancel{ text-decoration:line-through; opacity:.6; }
+  .tag-cancel{ display:inline-block; font-size:11px; font-weight:600; background:var(--risk-tint); color:var(--risk); padding:2px 8px; border-radius:100px; margin-left:6px; }
+
+  /* ===== Insights ===== */
+  .insight-list{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+  .insight{ display:flex; gap:12px; padding:12px 14px; border-radius:10px; background:var(--surface-soft); border-left:3px solid var(--line-strong); }
+  .insight.warn{ border-left-color:var(--risk); background:var(--risk-tint); }
+  .insight.info{ border-left-color:var(--primary); background:var(--primary-tint); }
+  .insight.watchit{ border-left-color:var(--watch); background:var(--watch-tint); }
+  .insight .ico{ font-size:16px; flex:none; }
+  .insight .txt{ font-size:13.5px; color:var(--ink-soft); }
+  .insight .txt b{ color:var(--ink); }
+
+  /* ===== Modal ===== */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(18,33,29,0.45); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-overlay.show{ display:flex; }
+  .modal{ background:#fff; border-radius:16px; max-width:520px; width:100%; padding:26px; box-shadow:0 20px 60px rgba(0,0,0,0.25); }
+  .modal h3{ margin:0 0 6px; font-size:18px; font-weight:600; }
+  .modal p.sub{ margin:0 0 18px; font-size:13px; color:var(--muted); }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+  .field select, .field textarea, .field input{
+    width:100%; border-radius:9px; border:1px solid var(--line-strong); padding:10px 12px;
+    font-family:'Kanit','Noto Sans Thai','IBM Plex Sans Thai',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:14px; color:var(--ink); background:var(--surface-soft);
+  }
+  .field textarea{ min-height:80px; resize:vertical; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--primary-dark); color:#fff; padding:12px 20px; border-radius:10px;
+    font-size:13.5px; font-weight:500; box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    opacity:0; pointer-events:none; transition:all .25s ease; z-index:60;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  footer{ margin:36px 0 40px; text-align:center; font-size:12.5px; color:var(--muted); }
+  footer a{ color:var(--primary); }
+
+  .empty-state{ text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+
+  @media (max-width:700px){
+    .kpi-main{ grid-template-columns:auto 1fr; }
+    .kpi-right{ grid-column:1/-1; justify-content:space-between; margin-top:8px; flex-wrap:wrap; row-gap:10px; }
+    .kpi-result-mini{ border-right:none; padding-right:0; text-align:left; }
+    .kpi-target-mini{ text-align:left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="eyebrow"><span class="dot"></span>แผนปฏิบัติราชการประจำปีงบประมาณ พ.ศ. 2569</div>
+    <h1 class="hero">ระบบวิเคราะห์และสรุปตัวชี้วัดแผนปฏิบัติราชการ พ.ศ. 2569</h1>
+    <p class="hero-sub">โรงพยาบาลกลาง สำนักการแพทย์ กรุงเทพมหานคร — มุมมองสรุปสำหรับผู้บริหาร และรายละเอียดสำหรับเจ้าหน้าที่ผู้รับผิดชอบตัวชี้วัด</p>
+    <div class="topbar-meta">
+      <div class="meta-chip"><span class="label">ข้อมูลตั้งต้นจากไฟล์</span><span class="val" id="sourceFileName">สรุป ตชว. รพก. (Excel)</span></div>
+      <div class="meta-chip"><span class="label">ไตรมาสล่าสุดที่มีข้อมูล</span><span class="val">ไตรมาสที่ 3 (เม.ย.–มิ.ย. 69)</span></div>
+      <div class="meta-chip"><span class="label">ปรับปรุงข้อมูลล่าสุด</span><span class="val tabular" id="lastUpdated">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap lift">
+
+  <div class="stat-grid" id="statGrid"></div>
+
+  <div class="panel" style="margin-top:18px;">
+    <div class="panel-head">
+      <h2 class="panel-title">จำนวนตัวชี้วัดตามหมวด</h2>
+    </div>
+    <p class="panel-desc" style="margin-bottom:12px;">แบ่งตามองค์ประกอบการประเมินของแผนปฏิบัติราชการ</p>
+    <div id="categoryBars"></div>
+  </div>
+
+  <div class="panel" style="margin-top:18px;">
+    <div class="panel-head">
+      <h2 class="panel-title">รายการตัวชี้วัด <span class="n" id="listCountLabel"></span></h2>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="expandAllBtn">ขยายทั้งหมด</button>
+        <button class="btn btn-primary btn-sm" id="exportBtn">⬇ ส่งออก .xlsx</button>
+      </div>
+    </div>
+
+    <p class="panel-desc">ค้นหา และกรองตามหมวดเพื่อดูรายละเอียดตัวชี้วัดตามแผนปฏิบัติราชการ โครงการ/กิจกรรม เป้าหมาย ผลการดำเนินงาน และหมายเหตุ</p>
+
+    <div class="tabs" id="catTabs"></div>
+
+    <div class="controls" style="margin-top:16px;">
+      <div class="search-box"><input type="text" id="searchInput" placeholder="ค้นหาชื่อตัวชี้วัด, โครงการ/กิจกรรม, รหัส KRs..."></div>
+      <select id="quarterFilter">
+        <option value="latest">ผลล่าสุดที่มีข้อมูล</option>
+        <option value="q1">ไตรมาสที่ 1</option>
+        <option value="q2">ไตรมาสที่ 2</option>
+        <option value="q3">ไตรมาสที่ 3</option>
+        <option value="q4">ไตรมาสที่ 4</option>
+      </select>
+    </div>
+
+    <div id="kpiListContainer"></div>
+  </div>
+
+  <div class="panel" style="margin-top:18px;">
+    <div class="panel-head">
+      <h2 class="panel-title">ส่วนที่ 3 งานประจำพื้นฐาน <span class="n">แผนงาน: บริหารงานกรุงเทพมหานคร / ผลผลิต: โรงพยาบาลกลาง</span></h2>
+    </div>
+    <p class="panel-desc">โครงการ/กิจกรรมประจำปีงบประมาณ พ.ศ. 2569 พร้อมงบประมาณ กำหนดการ และหน่วยงานผู้รับผิดชอบ</p>
+    <div style="overflow-x:auto;">
+      <table class="p3" id="part3Table">
+        <thead>
+          <tr><th style="width:36px;">#</th><th>โครงการ</th><th style="width:120px;">งบประมาณ (บาท)</th><th style="width:180px;">กำหนดการดำเนินการ</th><th style="width:170px;">หน่วยงานผู้รับผิดชอบ</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:18px;">
+    <div class="panel-head">
+      <h2 class="panel-title">ข้อสังเกตและคำแนะนำ</h2>
+    </div>
+    <div class="insight-list" id="insightList"></div>
+  </div>
+
+  <footer>
+    ข้อมูลประมวลผลจากไฟล์ Excel สรุปตัวชี้วัดแผนปฏิบัติราชการ พ.ศ. 2569 ของโรงพยาบาลกลาง · สถานะคำนวณโดยอัตโนมัติจากข้อมูลไตรมาสล่าสุดเทียบเป้าหมาย โปรดตรวจสอบความถูกต้องกับเจ้าของตัวชี้วัดก่อนใช้อ้างอิงอย่างเป็นทางการ<br>
+    การแก้ไขข้อมูลผ่านหน้านี้จะบันทึกเฉพาะในเบราว์เซอร์ของผู้ใช้งานแต่ละคน
+  </footer>
+
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="editModalTitle">อัปเดตผลการดำเนินงาน</h3>
+    <p class="sub" id="editModalSub">บันทึกผลไตรมาสล่าสุด ระบบจะคำนวณสถานะให้อัตโนมัติ</p>
+    <div class="field">
+      <label>ไตรมาสที่ต้องการบันทึกผล</label>
+      <select id="editQuarterSelect">
+        <option value="q1">ไตรมาสที่ 1 (ต.ค.–ธ.ค. 68)</option>
+        <option value="q2">ไตรมาสที่ 2 (ม.ค.–มี.ค. 69)</option>
+        <option value="q3">ไตรมาสที่ 3 (เม.ย.–มิ.ย. 69)</option>
+        <option value="q4" selected>ไตรมาสที่ 4 (ก.ค.–ก.ย. 69)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>ผลการดำเนินงาน (พิมพ์ "ร้อยละ XX.XX" เพื่อให้ระบบคำนวณสถานะอัตโนมัติ)</label>
+      <textarea id="editResultText" placeholder="เช่น จำนวนผู้รับบริการ ... ร้อยละ 75.20"></textarea>
+    </div>
+    <div class="field">
+      <label>หมายเหตุ (ถ้ามี)</label>
+      <textarea id="editNoteText" placeholder="ปัญหา/อุปสรรค หรือคำชี้แจงเพิ่มเติม"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelEditBtn">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveEditBtn">บันทึกข้อมูล</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="kpiDataRaw" type="application/json">[{"no": 1, "category_key": "agenda", "category": "Agenda Base", "indicator": "ร้อยละของการรักษาพยาบาลด้วยระบบโทรเวชกรรม telemedicine ผ่าน App  หมอ กทม. ของโรงพยาบาล สังกัดสำนักการแพทย์ (สัดส่วนการเข้ารับการตรวจ รักษา/ พบแพทย์ด้านการรักษาผู้ป่วยด้วยระบบโทรเวชกรรม telemedicine ต่อผู้รับบริการในโรงพยาบาล) ปี 2569\n\n วิธีการคำนวณ\n จำนวนผู้รับบริการรักษาพยาบาลด้วยระบบโทรเวชกรรม (Telemedicine) ผ่าน App หมอ กทม. หารด้วย จำนวน ผู้ป่วยนอก (OPD) 42 กลุ่ม โรค/อาการตามประกาศของสำนักงานหลักประกัน สุขภาพแห่งชาติ (สปสช.) ที่มารับบริการในโรงพยาบาล สังกัดสำนักการแพทย์ทั้งหมด  คูณด้วย 100", "project": "กิจกรรมการรักษาพยาบาลด้วย\n ระบบโทรเวชกรรม (Telemedicine) \n \n  รหัส\n  KRs 53101", "target": "ร้อยละ 12 \nแพทย์ 4,800 ครั้ง  \nพยาบาล 1,600 ครั้ง \nเภสัชกร 1,600 ครั้ง", "q1": "แพทย์  2,513 ครั้ง\n พยาบาล  349 ครั้ง\n เภสัชกร   30 ครั้ง\nร้อยละ 36.45", "q2": "แพทย์  5,321 ครั้ง\n พยาบาล  1,117 ครั้ง\n เภสัชกร   973 ครั้ง\nร้อยละ 92.64", "q3": "แพทย์  6,625 ครั้ง\n พยาบาล  1,995 ครั้ง\n เภสัชกร   2,347 ครั้ง\nร้อยละ 137.09", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "แพทย์  6,625 ครั้ง\n พยาบาล  1,995 ครั้ง\n เภสัชกร   2,347 ครั้ง\nร้อยละ 137.09", "achieved": 137.09, "target_pct": 12.0, "is_ceiling": false, "gap": 125.09, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 2, "category_key": "agenda", "category": "Agenda Base", "indicator": "ร้อยละของผู้ป่วยที่ต้องได้รับการส่งต่อจากปฐมภูมิไปยังโรงพยาบาลสังกัด\n กรุงเทพมหานครได้รับการส่งต่อภายในเวลา 15 นาที\n\n วิธีการคำนวณ\n จำนวนครั้งของผู้ป่วยที่ส่งต่อผ่านระบบ e-Referral ได้รับการนัดหมายภายใน 15 นาที  หารด้วย จำนวนครั้งของผู้ป่วย\n ที่ส่งต่อ จากศูนย์บริการสาธารณสุขทั้งหมด คูณ ด้วย 100", "project": "กิจกรรมการรับ-ส่งต่อ  ผู้ป่วยระหว่าง\n  โรงพยาบาลในสังกัดสำนักการแพทย์\n  และศูนย์บริการสาธารณสุข ผ่านระบบ \n  e-Referral \n\n รหัส\n KRs 53101", "target": "ร้อยละ 100", "q1": "จำนวนครั้งที่นัดหมายได้ใน 15 นาที\n687 ครั้ง\nจำนวนครั้งที่ส่งต่อทั้งหมด\n728 ครั้ง\n ร้อยละ 94.37", "q2": "จำนวนครั้งที่นัดหมายได้ใน 15 นาที\n345 ครั้ง\nจำนวนครั้งที่ส่งต่อทั้งหมด\n364 ครั้ง\n ร้อยละ 94.78", "q3": "จำนวนครั้งที่นัดหมายได้ใน 15 นาที\n220 ครั้ง\nจำนวนครั้งที่ส่งต่อทั้งหมด\n238 ครั้ง\n ร้อยละ 92.44", "q4": "", "note": "ไม่ถึงเป้าหมาย แต่ ตชว.ดังกล่าว\nดูในภาพรวม สนพ. \nตวช.นี้ สพบ.ยื่นอุธรณ์เนื่องจากมีหลายปัจจัย ที่ไม่สามารถดำเนินการตามเป้าหมายได้\n ปัญหา/อุปสรรค\n - ระบบ e-Referral เป็นรูปแบบ Decentralized ที่ม่ได้จัดเก็บข้อมูลไว้ที่จุดเดียว ซึ่งต้องอาศัยความพร้อมของระบบที่ต้นทาง ปลายทาง และส่วนกลาง หากส่วนใดส่วนหนึ่งไม่พร้อมใช้งาน จะทำให้ไม่สามารถใช้งานระบบได้", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนครั้งที่นัดหมายได้ใน 15 นาที\n220 ครั้ง\nจำนวนครั้งที่ส่งต่อทั้งหมด\n238 ครั้ง\n ร้อยละ 92.44", "achieved": 92.44, "target_pct": 100.0, "is_ceiling": false, "gap": -7.56, "status": "เฝ้าระวัง", "calc_note": "", "auto_calc": true}, {"no": 3, "category_key": "agenda", "category": "Agenda Base", "indicator": "ร้อยละของผู้ป่วยเบาหวานที่ควบคุมระดับน้ำตาลในเลือดได้ดี\n\n วิธีการคำนวณ\n จำนวนผู้ป่วยโรคเบาหวานที่ควบคุมระดับน้ำตาลได้ตามเกณฑ์ที่กำหนด ในปีงบประมาณ หารด้วย  จำนวนผู้ป่วย\n โรคเบาหวาน ที่ขึ้นทะเบียนและมารับบริการทั้งหมดในสถานพยาบาลสังกัดกรุงเทพมหานคร (โรงพยาบาลในสังกัด \n สำนักการแพทย์ 11 แห่ง และศูนย์บริการสาธารณสุข  สำนักอนามัย 69 แห่ง) ในปีงบประมาณเดียวกัน คูณด้วย 100", "project": "โครงการเพิ่มประสิทธิภาพดูแลผู้ป่วย\n เบาหวานเพื่อลดภาวะแทรกซ้อน\n\n รหัส\n KRs 53403", "target": "ร้อยละ 60", "q1": "- จำนวนผู้ป่วยโรคเบาหวานที่ควบคุมระดับน้ำตาลได้ตามเกณฑ์ที่กำหนดในปีงบประมาณ  1,522 ราย\n - จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 3,189 ราย\n ร้อยละ 47.73", "q2": "- จำนวนผู้ป่วยโรคเบาหวานที่ควบคุมระดับน้ำตาลได้ตามเกณฑ์ที่กำหนดในปีงบประมาณ  1,640 ราย\n - จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 3,295 ราย\n ร้อยละ 49.77", "q3": "- จำนวนผู้ป่วยโรคเบาหวานที่ควบคุมระดับน้ำตาลได้ตามเกณฑ์ที่กำหนดในปีงบประมาณ  1,822 ราย\n - จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 3,398 ราย\n ร้อยละ 53.62", "q4": "", "note": "ไม่ถึงเป้าหมาย แต่ ตชว.ดังกล่าว\nดูในภาพรวม สนพ. \nตวช.นี้ สพบ.ยื่นอุธรณ์เนื่องจากมีหลายปัจจัย ที่ไม่สามารถดำเนินการตามเป้าหมายได้\nปัญหา/อุปสรรค\n - การควบคุมระดับน้ำตาลขึ้นกับพฤติกรรมและความร่วมมือของผู้ป่วยในการรับประทานอาหารและรับประทานยาร่วมกัน\n - ผู้ป่วยส่วนใหญ่เป็นผู้สูงอายุที่มีโรคร่วมหลายโรค ส่งผลให้การควบคุมน้ำตาลได้ยาก\n - ผู้ป่วยที่ถูกส่งต่อจากหน่วยบริการปฐมภูมิมีจำนวนมากขึ้น และมักเป็นกลุ่มที่ควบคุมโรคไม่ได้ (กลุ่มเสี่ยง/อาการรุนแรง)", "latest_label": "ไตรมาส 3", "latest_text": "- จำนวนผู้ป่วยโรคเบาหวานที่ควบคุมระดับน้ำตาลได้ตามเกณฑ์ที่กำหนดในปีงบประมาณ  1,822 ราย\n - จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 3,398 ราย\n ร้อยละ 53.62", "achieved": 53.62, "target_pct": 60.0, "is_ceiling": false, "gap": -6.38, "status": "เฝ้าระวัง", "calc_note": "", "auto_calc": true}, {"no": 4, "category_key": "agenda", "category": "Agenda Base", "indicator": "ร้อยละของผู้ป่วยความดันโลหิตสูงที่ควบคุมระดับความดันโลหิตได้ดี\n\n วิธีการคำนวณ\n จำนวนผู้ป่วยโรคความดันโลหิตสูงควบคุมระดับความดันโลหิตได้ดีตามเกณฑ์ที่กำหนดในปีงบประมาณ หารด้วย จำนวนผู้ป่วยโรคความดันโลหิตที่ขึ้นทะเบียนและมารับบริการในโรงพยาบาล\n สังกัดสำนักการแพทย์ ทั้งหมด 11 แห่ง ในปีงบประมาณเดียวกัน คูณด้วย 100", "project": "โครงการเพิ่มประสิทธิภาพดูแลผู้ป่วย\n ความดันโลหิตสูงเพื่อลดภาวะแทรกซ้อน \n\n รหัส\n KRs 53405", "target": "ร้อยละ 60", "q1": "จำนวนผู้ป่วยโรคความดันโลหิตสูงควบคุมระดับความดันโลหิตได้ดีตามเกณฑ์ที่กำหนดในปีงบประมาณ  1,096 ราย\nจำนวนผู้ป่วยโรคความดันโลหิตที่ขึ้นทะเบียนและมารับบริการทั้งหมด 3,809  ราย\nร้อยละ 28.77", "q2": "จำนวนผู้ป่วยโรคความดันโลหิตสูงควบคุมระดับความดันโลหิตได้ดีตามเกณฑ์ที่กำหนดในปีงบประมาณ 1,343 ราย\nจำนวนผู้ป่วยโรคความดันโลหิตที่ขึ้นทะเบียนและมารับบริการทั้งหมด  4,077 ราย\nร้อยละ 32.94", "q3": "จำนวนผู้ป่วยโรคความดันโลหิตสูงควบคุมระดับความดันโลหิตได้ดีตามเกณฑ์ที่กำหนดในปีงบประมาณ 2,463 ราย\nจำนวนผู้ป่วยโรคความดันโลหิตที่ขึ้นทะเบียนและมารับบริการทั้งหมด 6,539 ราย\nร้อยละ 37.67", "q4": "", "note": "ไม่ถึงเป้าหมาย แต่ ตชว.ดังกล่าว\nดูในภาพรวม สนพ. \nตวช.นี้ สพบ.ยื่นอุธรณ์เนื่องจากมีหลายปัจจัย ที่ไม่สามารถดำเนินการตามเป้าหมายได้\nปัญหา/อุปสรรค\n - ผู้ป่วยขาดความรู้ในการเตรียมตัวและปฏิบัติตัวก่อนวัดความดันโลหิต\n - รับประทานยาไม่ถูกต้องในวันนัดตรวจ\n - การวัดความดันไม่ถูกวิธีทำให้ค่าที่ได้คาดเคลื่อน\n - ผู้ป่วยส่วนใหญ๗เป็นผู้สูงอายุ ควบคุมความดันได้ยาก", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนผู้ป่วยโรคความดันโลหิตสูงควบคุมระดับความดันโลหิตได้ดีตามเกณฑ์ที่กำหนดในปีงบประมาณ 2,463 ราย\nจำนวนผู้ป่วยโรคความดันโลหิตที่ขึ้นทะเบียนและมารับบริการทั้งหมด 6,539 ราย\nร้อยละ 37.67", "achieved": 37.67, "target_pct": 60.0, "is_ceiling": false, "gap": -22.33, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 5, "category_key": "agenda", "category": "Agenda Base", "indicator": "ร้อยละของผู้ป่วยโรคซึมเศร้าได้รับการดูแลอย่างต่อเนื่อง\n\n วิธีการคำนวณ\n จำนวนผู้ป่วยโรคซึมเศร้าที่ได้รับการดูแลอย่างต่อเนื่อง หารด้วย จำนวนผู้ป่วยโรคซึมเศร้าที่มารับบริการในคลินิกสุขภาพจิตของโรงพยาบาลในสังกัดสำนักการแพทย์ ทั้งหมด คูณด้วย 100 \n  ยกเว้น กรณีมีการส่งตัว (refer) และเสียชีวิต ภายใน 6 เดือน", "project": "โครงการเพิ่มประสิทธิภาพการให้บริการ \n ดูแลรักษาผู้ป่วยโรคซึมเศร้า  \n\n รหัส\n KRs53407", "target": "ร้อยละ 85", "q1": "จำนวนผู้ป่วยซึมเศร้าที่ดูแลต่อเนื่อง\n277 ราย\nจำนวนผู้ป่วยซึมเศร้าทั้งหมด(ยกเว้น Refer/ตาย)\n323 ราย\nร้อยละ 85.76", "q2": "จำนวนผู้ป่วยซึมเศร้าที่ดูแลต่อเนื่อง\n268 ราย\nจำนวนผู้ป่วยซึมเศร้าทั้งหมด(ยกเว้น Refer/ตาย)\n435 ราย\nร้อยละ61.61", "q3": "จำนวนผู้ป่วยซึมเศร้าที่ดูแลต่อเนื่อง\n329 ราย\nจำนวนผู้ป่วยซึมเศร้าทั้งหมด(ยกเว้น Refer/ตาย)\n253 ราย\nร้อยละ 62.91", "q4": "", "note": "ไม่ถึงเป้าหมาย แต่ ตชว.ดังกล่าวดูในภาพรวม สนพ. \nตวช.นี้ สพบ.ยื่นอุธรณ์เนื่องจากมีหลายปัจจัย ที่ไม่สามารถดำเนินการตามเป้าหมายได้\nปัญหา/อุปสรรค\n - การตีตราทางสังคมทำให้ผู้ป่วยกลัวและหลีกเลี่ยงการเข้ารับการรักษา\n - ครอบครัวขาดความเข้าใจโรคและความเชื่อคลาดเคลื่อนทำให้ไม่สนับสนุนการรักษาและขาดการดูแลผู้ป่วย\n - ผู้ป่วยมีภาระค่าใช้จ่าย ปัญหาด้านเศณษฐกิจครอบครัว และต้องทำงาน ทำให้ไม่มีเวลามาพบแพทย์ตามนัด", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนผู้ป่วยซึมเศร้าที่ดูแลต่อเนื่อง\n329 ราย\nจำนวนผู้ป่วยซึมเศร้าทั้งหมด(ยกเว้น Refer/ตาย)\n253 ราย\nร้อยละ 62.91", "achieved": 62.91, "target_pct": 85.0, "is_ceiling": false, "gap": -22.09, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 6, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของจำนวนคลินิกชุมชนอบอุ่นในเขตพื้นที่ กทม. มีการเชื่อมโยง\n เครือข่ายผู้ป่วยผ่านระบบ e – Referral\n\n วิธีคำนวณ\n จำนวนคลินิกชุมชนอบอุ่นที่สามารถเชื่อมโยงเครือข่ายส่งต่อผู้ป่วยผ่านระบบ e- Referral กับโรงพยาบาลในสังกัดสำนักการแพทย์ หารด้วย จำนวนคลินิกชุมชนอบอุ่นที่เป็นเครือข่ายของโรงพยาบาลสังกัดสำนักการแพทย์ทั้งหมด \n คูณด้วย 100", "project": "กิจกรรมการรับ-ส่งต่อผู้ป่วยระหว่าง\n โรงพยาบาลในสังกัดสำนักการแพทย์และ\n ศูนย์บริการสาธารณสุขผ่านระบบ\n e-Referral \n\n รหัส\n KRs 53302", "target": "ร้อยละ 90", "q1": "- คลินิกชุมชนอบอุ่นที่สามารถเชื่อมโยงเครือข่ายส่งต่อผู้ป่วยผ่านระบบ e-Referral \nกับโรงพยาบาล  4 คลินิก\n - จำนวนคลินิกชุมชนอบอุ่นที่เป็นเครือข่ายของโรงพยาบาล  10 คลินิก\n ร้อยละ 40", "q2": "- คลินิกชุมชนอบอุ่นที่สามารถเชื่อมโยงเครือข่ายส่งต่อผู้ป่วยผ่านระบบ e-Referral \nกับโรงพยาบาล  3 คลินิก\n - จำนวนคลินิกชุมชนอบอุ่นที่เป็นเครือข่ายของโรงพยาบาล  10 คลินิก\n ร้อยละ 30", "q3": "- คลินิกชุมชนอบอุ่นที่สามารถเชื่อมโยงเครือข่ายส่งต่อผู้ป่วยผ่านระบบ e-Referral \nกับโรงพยาบาล  3 คลินิก\n - จำนวนคลินิกชุมชนอบอุ่นที่เป็นเครือข่ายของโรงพยาบาล  10 คลินิก\n ร้อยละ 30", "q4": "", "note": "ตวช.ดังกล่าวไม่ถึงเป้าหมาย เนื่องจากการเปลี่ยนแปลงนโยบายทั้งจากคลินิกฯ หรือกองทุนต่างๆ เช่น สปสช. ทำให้ขาดความต่อเนื่องในการดำเนินงานและการประสานงานร่วมกัน", "latest_label": "ไตรมาส 3", "latest_text": "- คลินิกชุมชนอบอุ่นที่สามารถเชื่อมโยงเครือข่ายส่งต่อผู้ป่วยผ่านระบบ e-Referral \nกับโรงพยาบาล  3 คลินิก\n - จำนวนคลินิกชุมชนอบอุ่นที่เป็นเครือข่ายของโรงพยาบาล  10 คลินิก\n ร้อยละ 30", "achieved": 30.0, "target_pct": 90.0, "is_ceiling": false, "gap": -60.0, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 7, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของผู้รับบริการ health tech  เพิ่มขึ้น\n\n วิธีคำนวณ\n A = จำนวนผู้มารับบริการด้านการแพทย์และสาธารณสุข ด้วยบริการรูปแบบใหม่โดยใช้เทคโนโลยีดิจิทัลเข้ามาร่วมในการ\n ให้บริการ อาทิ การพบแพทย์ทางไกล ผ่านศูนย์เทคโนโลยีสุขภาพดี  (Health tech) และ/หรือ บริการอื่นจากสำนักงาน\n หลักประกันสุขภาพแห่งชาติ (สปสช.) กระทรวงสาธารณสุข หรือภาคีเครือข่าย ที่ให้บริการร่วมกับกรุงเทพมหานครใน\n ลักษณะเดียวกัน ใน ปีงบประมาณ  พ.ศ. 2569\n B = จำนวนผู้มารับบริการด้านการแพทย์และสาธารณสุข ด้วยบริการรูปแบบใหม่โดยใช้เทคโนโลยีดิจิทัลเข้ามาร่วมในการ\n ให้บริการ อาทิ การพบแพทย์ทางไกล ผ่านศูนย์เทคโนโลยีสุขภาพดี (Health tech) และ/หรือ บริการอื่นจากสำนักงาน \n หลักประกันสุขภาพแห่งชาติ (สปสช.) กระทรวงสาธารณสุข หรือภาคีเครือข่าย ที่ให้บริการร่วมกับกรุงเทพมหานคร\n ในลักษณะเดียวกัน ใน ปีงบประมาณ  พ.ศ. 2568\n A - B X 100\n   B", "project": "กิจกรรมส่งเสริมการเข้าถึงบริการสุขภาพ\n  ผ่านศูนย์ Health Tech\n\n  รหัส\n  KRs 53303", "target": "เพิ่มขึ้นร้อยละ 10\nของปีก่อนหน้า", "q1": "จำนวนผู้รับบริการ health tech ปี 69\n 742 ราย\n จำนวนผู้รับบริการ health tech ปี 68\n 1,770 ราย", "q2": "จำนวนผู้รับบริการ health tech ปี 69\n 1,325 ราย\n จำนวนผู้รับบริการ health tech ปี 68\n 42 ราย", "q3": "จำนวนผู้รับบริการ health tech ปี 69\n 1,947 ราย\n จำนวนผู้รับบริการ health tech ปี 68\n 669 ราย", "q4": "", "note": "จำนวนผู้รับบริการ health tech ปี 68 \nในช่วงไตรมาสที่ 2 มีการปิดให้บริการที่ศูนย์ health tech ทำให้ยอดผู้มารับบริการน้อย", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนผู้รับบริการ health tech ปี 69\n 1,947 ราย\n จำนวนผู้รับบริการ health tech ปี 68\n 669 ราย", "achieved": 191.0, "target_pct": 10.0, "is_ceiling": false, "gap": 181.0, "status": "ถึงเป้า", "calc_note": "เทียบจำนวนผู้รับบริการ Health Tech ไตรมาส 3 (1,947 ราย) กับปีก่อน (669 ราย) เพิ่มขึ้นร้อยละ 191 สูงกว่าเป้าหมายที่กำหนดไว้ (เพิ่มขึ้นร้อยละ 10)", "auto_calc": false}, {"no": 8, "category_key": "function", "category": "Function Base", "indicator": "อัตราความสำเร็จของการรักษาผู้ป่วยวัณโรคปอดรายใหม่\n\n วิธีคำนวณ\n อัตราผลสำเร็จในการรักษา เท่ากับจำนวนผู้ป่วยที่รักษาหาย รวมกับจำนวนผู้ป่วยที่รักษาครบที่ขึ้นทะเบียนรักษาตั้งแต่รอบที่ 1 - 4 /2568 ในโรงพยาบาล 9 แห่ง (ยกเว้นโรงพยาบาลรัตนประชารักษ์และโรงพยาบาลบางนากรุงเทพมหานคร)\n หารด้วย จำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียนทั้งหมดในโรงพยาบาล 9 แห่ง  ในรอบดังกล่าวคูณด้วย 100", "project": "โครงการเพิ่มประสิทธิภาพการ\n  ให้บริการดูแลรักษาผู้ป่วยวัณโรค\n \n  รหัส\n  KRs 53402", "target": "ร้อยละ 90", "q1": "ผลความสำเร็จของการรักษา (Cure+Complete)\n 45 ราย\nจำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียน\n 52 ราย\n ร้อยละ 86.54", "q2": "ผลความสำเร็จของการรักษา (Cure+Complete)\n 41 ราย\nจำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียน\n 47 ราย\n ร้อยละ 87.23", "q3": "ผลความสำเร็จของการรักษา (Cure+Complete)\n 40 ราย\nจำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียน\n 51 ราย\n ร้อยละ 78.43", "q4": "", "note": "สพบ. อุธรณ์ตัวชี้วัดนี้ไปยัง สยป.และรายงานในภาพรวม สนพ.\nปัญหา/อุปสรรค\n - พฤติกรรมความร่วมมือของญาติและผู้ป่วย ไม่เห็นถึงความสำคัญของการรักษา ขาดความต่อเนื่องและเสี่ยงขาดยา\n - ข้อจำกัดด้านการติดตามผู้ป่วย ย้ายที่อยู่ เปลี่ยนแปลงข้อมูลการติดต่อ หรือกลับไปรักษาต่างพื้นที่ ทำให้ติดตามต่อเนื่องไม่ได้ \n - บริบททางด้านสังคมและเศณษฐกิจของผู้ป่วย เช่น ต้องทำงาน ขาดรายได้ ไม่มีผู้ดูแล หรือเป็นผู้ป่วยไร้บ้าน\n - ปัจจัยด้านสุขภาพของผู้ป่วย เช่น ผู้ป่วยมีโรคร่วม เสียชีวิตระหว่างการรักษา ทำให้ผลลัพธ์ไม่เป็นไปตามเป้าหมาย", "latest_label": "ไตรมาส 3", "latest_text": "ผลความสำเร็จของการรักษา (Cure+Complete)\n 40 ราย\nจำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียน\n 51 ราย\n ร้อยละ 78.43", "achieved": 78.43, "target_pct": 90.0, "is_ceiling": false, "gap": -11.57, "status": "เฝ้าระวัง", "calc_note": "", "auto_calc": true}, {"no": 9, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของผู้ป่วยเบาหวานที่ได้รับการตรวจ HbA1c อย่างน้อย 1 ครั้ง/ปี\n\n วิธีคำนวณ\n จำนวนผู้ป่วยโรคเบาหวานที่ได้รับการตรวจ HbA1c อย่างน้อย 1 /ปี หารด้วย จำนวนผู้ป่วยที่ได้รับการวินิจฉัยว่าเป็น\n โรคเบาหวานที่ขึ้นทะเบียนรับการรักษากับ โรงพยาบาลในสังกัดสำนักการแพทย์ 11 แห่ง คูณด้วย 100", "project": "โครงการเพิ่มประสิทธิภาพการ\n ติดตามดูแลผู้ป่วยเบาหวาน\n\n รหัส\n KRs 53402", "target": "มากกว่าร้อยละ 75", "q1": "จำนวนผู้ป่วยเบาหวานได้รับการตรวจค่าระดับน้ำตาล HbA1C อย่างน้อยปีละ 1 ครั้งตามเกณฑ์ในปีงบประมาณ 3,167 ราย\n จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 5,567 ราย\n ร้อยละ 56.89", "q2": "จำนวนผู้ป่วยเบาหวานได้รับการตรวจค่าระดับน้ำตาล HbA1C อย่างน้อยปีละ 1 ครั้งตามเกณฑ์ในปีงบประมาณ 5,520 ราย\n จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 7,600 ราย\n ร้อยละ 72.63", "q3": "จำนวนผู้ป่วยเบาหวานได้รับการตรวจค่าระดับน้ำตาล HbA1C อย่างน้อยปีละ 1 ครั้งตามเกณฑ์ในปีงบประมาณ 7,287 ราย\n จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 8,925 ราย\n ร้อยละ 81.65", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนผู้ป่วยเบาหวานได้รับการตรวจค่าระดับน้ำตาล HbA1C อย่างน้อยปีละ 1 ครั้งตามเกณฑ์ในปีงบประมาณ 7,287 ราย\n จำนวนผู้ป่วยโรคเบาหวานที่ขึ้นทะเบียนและมารับบริการทั้งหมด 8,925 ราย\n ร้อยละ 81.65", "achieved": 81.65, "target_pct": 75.0, "is_ceiling": false, "gap": 6.65, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 10, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของการให้บริการประชาชนผ่านศูนย์สนับสนุนบริการสุขภาพเวชศาสตร์       \n เขตเมือง (Urban Medicine Service Center : UMSC) ภายใน 15 นาที\n\n วิธีคำนวณ\n จำนวนประชาชนที่ได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (Urban Medicine Service Center, UMSC) ได้รับบริการภายใน 15 นาทีผ่าน ช่องทาง Line OA , Easy chat หารด้วย จำนวนประชาชนได้รับคำปรึกษาผ่าน\n ศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (Urban Medicine Service  Center,UMSC) ผ่านช่องทาง Line OA , Easy chatทั้งหมด คูณด้วย 100", "project": "กิจกรรมการให้บริการของศูนย์สนับสนุน\n บริการสุขภาพเวชศาสตร์เขตเมือง \n (Urban Medicine Service Center, \n UMSC)\n \n รหัส\n KRs 54102", "target": "ร้อยละ 100", "q1": "จำนวนประชาชนที่ได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ได้รับบริการภายใน 15 นาทีผ่านช่องทาง Line OA / Easy chat  3,672 ราย\n จำนวนประชาชนได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ผ่านช่องทาง Line OA / Easy chat ทั้งหมด 4,094 ราย \nร้อยละ 89.69", "q2": "จำนวนประชาชนที่ได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ได้รับบริการภายใน 15 นาทีผ่านช่องทาง Line OA / Easy chat  3,672 ราย\n จำนวนประชาชนได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ผ่านช่องทาง Line OA / Easy chat ทั้งหมด 5,259 ราย \nร้อยละ 91.08", "q3": "จำนวนประชาชนที่ได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ได้รับบริการภายใน 15 นาทีผ่านช่องทาง Line OA / Easy chat  4,593 ราย\n จำนวนประชาชนได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ผ่านช่องทาง Line OA / Easy chat ทั้งหมด 5,044 ราย \nร้อยละ 91.06", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนประชาชนที่ได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ได้รับบริการภายใน 15 นาทีผ่านช่องทาง Line OA / Easy chat  4,593 ราย\n จำนวนประชาชนได้รับคำปรึกษาผ่านศูนย์สนับสนุนบริการเวชศาสตร์เขตเมือง (UMSC) ผ่านช่องทาง Line OA / Easy chat ทั้งหมด 5,044 ราย \nร้อยละ 91.06", "achieved": 91.06, "target_pct": 100.0, "is_ceiling": false, "gap": -8.94, "status": "เฝ้าระวัง", "calc_note": "", "auto_calc": true}, {"no": 11, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของชุมชนจัดตั้งตามระเบียบของกรุงเทพมหานครที่มีชมรมผู้สูงอายุ /\n ร้อยละ 50 ของชุมชนจัดตั้งตามระเบียบของกรุงเทพมหานครที่มีชมรมผู้สูงอายุ\n (เป้าหมายในภาพรวมของตัววัดผลหลัก)\n\n วิธีคำนวณ\n วัดตามบทบาทภารกิจของหน่วยงาน หรือผลการดำเนินกรในภาพรวมของตัววัดผลหลัก หากบรรลุตามเป้าหมายที่กำหมด\n จึงนับว่าหน่ายงาน R ดำเนินการสำเร็จ", "project": "กิจกรรมชมรมผู้สูงอายุสร้างสุขภาพส่งเสริม\n สุขภาพใจ (Active  Aging)\n\n รหัส\n KRs 51201", "target": "ร้อยละ 50 ของชุมชนจัดตั้งตามระเบียบของกรุงเทพมหานครที่มีชมรมผู้สูงอายุ (เป้าหมายในภาพรวมของตัววัดผลหลัก)", "q1": "จำนวนชุมชนที่มีชมรม 1 ชมรม\nจำนวนชุมชนทั้งหมด 1 ชุมชน", "q2": "จำนวนชุมชนที่มีชมรม 1 ชมรม\nจำนวนชุมชนทั้งหมด 1 ชุมชน", "q3": "จำนวนชุมชนที่มีชมรม 1 ชมรม\nจำนวนชุมชนทั้งหมด 1 ชุมชน", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนชุมชนที่มีชมรม 1 ชมรม\nจำนวนชุมชนทั้งหมด 1 ชุมชน", "achieved": 100.0, "target_pct": 50.0, "is_ceiling": false, "gap": 50.0, "status": "ถึงเป้า", "calc_note": "ชุมชนมีชมรมผู้สูงอายุครบ 1/1 ชุมชน (ร้อยละ 100) สูงกว่าเป้าหมายร้อยละ 50", "auto_calc": false}, {"no": 12, "category_key": "function", "category": "Function Base", "indicator": "อัตราความสำเร็จของการรักษาผู้ป่วยวัณโรคปอดรายใหม่\n\n วิธีคำนวณ\n อัตราผลสำเร็จในการรักษา เท่ากับจำนวนผู้ป่วยที่รักษาหาย รวมกับจำนวนผู้ป่วยที่รักษาครบที่ขึ้นทะเบียนรักษาตั้งแต่\nรอบที่ 1 - 4 /2568 ในโรงพยาบาล 9 แห่ง (ยกเว้นโรงพยาบาลรัตนประชารักษ์และโรงพยาบาลบางนากรุงเทพมหานคร) หารด้วย จำนวนผู้ป่วยวัณโรครายใหม่ที่ขึ้นทะเบียนทั้งหมดในโรงพยาบาล  9 แห่ง ในรอบดังกล่าว คูณด้วย 100", "project": "โครงการเร่งรัดการป้องกันและดูแลรักษา\n ผู้ติดเชื้อเอชไอวีและประชากรกลุ่มเสี่ยง\n เพื่อบรรลุ95-95-95  โรงพยาบาล \n ในสังกัดสำนักการแพทย์ กรุงเทพมหานคร\n\nรหัส\n KRs 51203", "target": "ร้อยละ 99", "q1": "ผู้ติดเชื้อที่ได้รับยาต้านทั้งหมด\n 2,040 ราย\n ผู้ติดเชื้อที่ยังมีชีวิตและรู้สถานะตนเอง\n 2,104 ราย\n ร้อยละ 96.96", "q2": "ผู้ติดเชื้อที่ได้รับยาต้านทั้งหมด\n 2,018 ราย\n ผู้ติดเชื้อที่ยังมีชีวิตและรู้สถานะตนเอง\n 2,050 ราย\n ร้อยละ 98.44", "q3": "ผู้ติดเชื้อที่ได้รับยาต้านทั้งหมด\n 2,017 ราย\n ผู้ติดเชื้อที่ยังมีชีวิตและรู้สถานะตนเอง\n 2,059 ราย\n ร้อยละ 97.96", "q4": "", "note": "สพบ. อุธรณ์ตัวชี้วัดนี้ไปยัง สยป.และรายงานในภาพรวม สนพ.\nปัญหา/อุปสรรค\n - พฤติกรรมความร่วมมือของญาติและผู้ป่วย ไม่เห็นถึงความสำคัญของการรักษา ขาดความต่อเนื่องและเสี่ยงขาดยา\n - ข้อจำกัดด้านการติดตามผู้ป่วย ย้ายที่อยู่ เปลี่ยนแปลงข้อมูลการติดต่อ หรือกลับไปรักษาต่างพื้นที่ ทำให้ติดตามต่อเนื่องไม่ได้ \n - บริบททางด้านสังคมและเศณษฐกิจของผู้ป่วย เช่น ต้องทำงาน ขาดรายได้ ไม่มีผู้ดูแล หรือเป็นผู้ป่วยไร้บ้าน\n - ปัจจัยด้านสุขภาพของผู้ป่วย เช่น ผู้ป่วยมีโรคร่วม เสียชีวิตระหว่างการรักษา ทำให้ผลลัพธ์ไม่เป็นไปตามเป้าหมาย", "latest_label": "ไตรมาส 3", "latest_text": "ผู้ติดเชื้อที่ได้รับยาต้านทั้งหมด\n 2,017 ราย\n ผู้ติดเชื้อที่ยังมีชีวิตและรู้สถานะตนเอง\n 2,059 ราย\n ร้อยละ 97.96", "achieved": 97.96, "target_pct": 99.0, "is_ceiling": false, "gap": -1.04, "status": "เฝ้าระวัง", "calc_note": "", "auto_calc": true}, {"no": 13, "category_key": "function", "category": "Function Base", "indicator": "หน่วยงานที่มีการตรวจสอบสภาพยานพาหนะ และรายงานสถานะรายเดือนผ่าน \n “ระบบฐานข้อมูลสารสนเทศภูมิศาสตร์ (GIS) และระบบสารสนเทศการบริหาร (MIS) \n เพื่อการป้องกันและบรรเทาสาธารณภัย”\n\n วิธีคำนวณ\n จำนวนรอบที่หน่วยงานรายงานข้อมูลการตรวจสอบสภาพยานพาหนะและสถานะผ่าน“ระบบฐานข้อมูลสารสนเทศภูมิศาสตร์ (GIS) และระบบสารสนเทศการบริหาร  (MIS) เพื่อการป้องกันและบรรเทาสาธารณภัย”ของสำนักป้องกันและบรรเทาสาธารณภัย", "project": "กิจกรรมตรวจสอบยานพาหนะและรายงาน\n สถานะผ่านระบบฐานข้อมูลสารสนเทศ\n ภูมิศาสตร์ (GIS) และระบบสารสนเทศการ\n บริหาร (MIS) \n\n รหัส\n KRs 22108", "target": "อย่างน้อย 2 รอบ/เดือน", "q1": "ผลรวมจำนวนรอบที่หน่วยงานมีการรายงานฯ \n  6 รอบ\n จำนวนเดือนที่ดำเนินการ  \n 3 เดือน", "q2": "ผลรวมจำนวนรอบที่หน่วยงานมีการรายงานฯ \n  6 รอบ\n จำนวนเดือนที่ดำเนินการ  \n 3 เดือน", "q3": "ผลรวมจำนวนรอบที่หน่วยงานมีการรายงานฯ \n  6 รอบ\n จำนวนเดือนที่ดำเนินการ  \n 3 เดือน", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ผลรวมจำนวนรอบที่หน่วยงานมีการรายงานฯ \n  6 รอบ\n จำนวนเดือนที่ดำเนินการ  \n 3 เดือน", "achieved": 2.0, "target_pct": 2.0, "is_ceiling": false, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "รายงานผลเฉลี่ย 2 รอบ/เดือน (รวม 6 รอบใน 3 เดือน) เป็นไปตามเป้าหมายอย่างน้อย 2 รอบ/เดือน", "auto_calc": false}, {"no": 14, "category_key": "function", "category": "Function Base", "indicator": "ระดับความพึงพอใจเฉลี่ยในการแก้ไขปัญหา\n\n วิธีคำนวณ\n คะแนนที่ได้ = ระดับความพึงพอใจที่หน่วยงานดำเนินการได้ หารด้วยระดับความพึงพอใจ 5 ดาวคูณด้วย คะแนนในแต่ละองค์ประกอบที่หน่วยงานกำหนดไว้", "project": "โครงการเพิ่มประสิทธิภาพการรับเรื่องร้องทุกข์ของประชาชนผ่านแพลตฟอร์มทราฟฟี่ฟองดูว์\n \n รหัส\n KRs 31100", "target": "4.2 ดาว", "q1": "4.3 ดาว", "q2": "4.7 ดาว", "q3": "3.0 ดาว", "q4": "", "note": "พบว่ามีหลายเรื่องที่ผู้ร้องเรียนเปิดเรื่องใหม่ขึ้นมาหลายครั้ง หลังจากชี้แจงข้อเท็จจริงแล้ว เห็นควรมีระบบที่สามารถจัดการสถานะเป็นยุติเรื่องได้ หรือกรณีที่ผู้ร้องเรียนบางรายคุกคาม หมิ่นประมาท กล่าวอ้างถึงเจ้าหน้าที่โดยไม่เหมาะสม ไม่เป็นความจริง", "latest_label": "ไตรมาส 3", "latest_text": "3.0 ดาว", "achieved": 3.0, "target_pct": 4.2, "is_ceiling": false, "gap": -1.2, "status": "เสี่ยง", "calc_note": "คะแนนความพึงพอใจไตรมาส 3 อยู่ที่ 3.0 ดาว ต่ำกว่าเป้าหมาย 4.2 ดาว", "auto_calc": false}, {"no": 15, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของเรื่องทั้งหมดที่แจ้ง Traffy Fondue ได้รับการแก้ไข\n\n วิธีคำนวณ\n ร้อยละคุณภาพการแก้ไขปัญหา = \n จำนวนเรื่องที่ได้รับการแก้ไขรายเดือน ลบด้วย จำนวนเรื่องที่ถูกหักคะแนนรายงาน หารด้วย จำนวนเรื่องที่ได้รับการแก้ไขราย\n เดือน คูณด้วย 100\n ร้อยละประสิทธิภาพการแก้ไขปัญหา = จำนวนเรื่องที่ได้รับการแก้ไขทั้งหมดหาร ด้วย (จำนวนเรื่องทั้งหมด บวกด้วย (จำนวน \n เรื่องคงค้าง คูณด้วย ค่าถ่วงน้ำหนัก ) ลบด้วย จำนวนเรื่องคงค้าง คูณด้วย 100", "project": "โครงการเพิ่มประสิทธิภาพการรับ\n เรื่องร้องทุกข์ของประชาชนผ่าน\n แพลตฟอร์มทราฟฟี่ฟองดูว์\n \n รหัส\n KRs 31201", "target": "ร้อยละ 80", "q1": "จำนวนเรื่องที่ได้รับการแก้ไขรายเดือน 12 เรื่อง\nจำนวนเรื่องที่ได้รับการแก้ไขทั้งหมด 16 เรื่อง\n ร้อยละของเรื่องทั้งหมดที่แจ้ง Traffy Fondue ได้รับการแก้ไข \nร้อยละ 75", "q2": "จำนวนเรื่องที่ได้รับการแก้ไขรายเดือน 23 เรื่อง\nจำนวนเรื่องที่ได้รับการแก้ไขทั้งหมด 29 เรื่อง\n ร้อยละของเรื่องทั้งหมดที่แจ้ง Traffy Fondue ได้รับการแก้ไข \nร้อยละ 79.31", "q3": "จำนวนเรื่องที่ได้รับการแก้ไขรายเดือน 31 เรื่อง\nจำนวนเรื่องที่ได้รับการแก้ไขทั้งหมด 32 เรื่อง\n ร้อยละของเรื่องทั้งหมดที่แจ้ง Traffy Fondue ได้รับการแก้ไข \nร้อยละ 96.87", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนเรื่องที่ได้รับการแก้ไขรายเดือน 31 เรื่อง\nจำนวนเรื่องที่ได้รับการแก้ไขทั้งหมด 32 เรื่อง\n ร้อยละของเรื่องทั้งหมดที่แจ้ง Traffy Fondue ได้รับการแก้ไข \nร้อยละ 96.87", "achieved": 96.87, "target_pct": 80.0, "is_ceiling": false, "gap": 16.87, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 16, "category_key": "function", "category": "Function Base", "indicator": "จำนวนข้อมูลศักยภาพสูง (Hight Value Dataset) ที่เผยแพร่\n\n วิธีคำนวณ\n - ระยะ 6 เดือน :วัดจากจำนวนข้อมูลศักยภาพสูงของหน่วยงานที่เผยแพร่ เชิงปริมาณและเชิงคุณภาพที่กำหนด โดยไม่นับ\n รวม ในส่วนจำนวนการเข้าชมข้อมูลต่อปี\n - ระยะ 12 ปี : วัดจากจำนวนข้อมูลศักยภาพสูงของหน่วยงานที่เผยแพร่ เชิงปริมาณและเชิงคุณภาพที่กำหนด\n นับจำนวนข้อมูลศักยภาพสูง (High Value Dataset) ของหน่วยงานที่เผยแพร่บนศูนย์ข้อมูลเปิดภาครัฐของกรุงเทพมหานคร  \n (data.bangkok.go.th)", "project": "กิจกรรมรายงานผลการดำเนินการการ\n เปิดเผยข้อมูลเปิดภาครัฐของสำนัก\n การแพทย์ต่อคณะกรรมการธรรม\n มาภิบาลข้อมูลภาครัฐของกรุงเทพมหานคร\n รหัส\n KRs 32101", "target": "16 ชุดข้อมูล", "q1": "16 ชุดข้อมูล", "q2": "16 ชุดข้อมูล", "q3": "16 ชุดข้อมูล", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "16 ชุดข้อมูล", "achieved": 16.0, "target_pct": 16.0, "is_ceiling": false, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "เผยแพร่ข้อมูลศักยภาพสูงครบ 16 ชุดข้อมูล ตามเป้าหมาย", "auto_calc": false}, {"no": 17, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของยานพาหนะกรุงเทพมหานครมีค่าควันดำไม่เกินกว่าที่กำหนด\n\n วิธีคำนวณ\n ร้อยละของยานพาหนะของกรุงเทพมหานครในความรับผิดชอบของหน่วยงานที่มีค่าควันดำไม่เกินร้อยละ 20\n สูตรคำนวณ\n ร้อยละของยานพาหนะของกรุงเทพมหานครที่มีค่าควันดำไม่เกินร้อยละ 20 = (จำนวนยานพาหนะของกรุงเทพมหานครใน \n ความรับผิดชอบของหน่วยงานที่มีค่าควันดำไม่เกินร้อยละ 20 x 100) หารด้วยจำนวนยานพาหนะกรุงเทพมหานคร\n ในความรับผิดของหน่วยงานทั้งหมด", "project": "กิจกรรมตรวจวัดควันดำจากรถยนต์\n ส่วนกลางของส่วนราชการในสังกัด\n สำนักการแพทย์\n\n รหัส\n KRs 42307", "target": "ค่าควันดำไม่เกินร้อยละ 20", "q1": "จำนวนยานพาหนะที่มีควันดำไม่เกิน 20% \nจำนวน 16 คัน\nจำนวนยานพาหนะทั้งหมด จำนวน 16 คัน\nร้อยละ 100", "q2": "จำนวนยานพาหนะที่มีควันดำไม่เกิน 20% \nจำนวน 16 คัน\nจำนวนยานพาหนะทั้งหมด จำนวน 16 คัน\nร้อยละ 100", "q3": "จำนวนยานพาหนะที่มีควันดำไม่เกิน 20% \nจำนวน 16 คัน\nจำนวนยานพาหนะทั้งหมด จำนวน 16 คัน\nร้อยละ 100", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนยานพาหนะที่มีควันดำไม่เกิน 20% \nจำนวน 16 คัน\nจำนวนยานพาหนะทั้งหมด จำนวน 16 คัน\nร้อยละ 100", "achieved": 100.0, "target_pct": 100.0, "is_ceiling": true, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "ยานพาหนะผ่านเกณฑ์ค่าควันดำไม่เกินร้อยละ 20 ครบ 16/16 คัน (ร้อยละ 100)", "auto_calc": false}, {"no": 18, "category_key": "function", "category": "Function Base", "indicator": "ลดการปล่อย GHG\n\n วิธีคำนวณ\n 1) นับรวมปริมาณการลดการปล่อยก๊าซเรือนกระจกจากทุก ๆ กิจกรรม/โครงการของหน่วยงาน\n 2) รวบรวม สรุปผล และรายงานผลการดำเนินกิจกรรม/โครงการด้านการลด GHG ของหน่วยงานให้สำนักสิ่งแวดล้อม", "project": "โครงการติดตั้ง Solar Rooftop \n ในโรงพยาบาลสังกัดสำนักการแพทย์\n \n รหัส\n KRs 42403", "target": "2,200 tCO2e", "q1": "0 tCO2e", "q2": "แผนล้างแอร์ 15.337 tCO2e\nแผงโซล่าเซลล์ 58.497 tCO2e\n73.834 tCO2e", "q3": "แผนล้างแอร์/แผงโซล่าเซลล์ \n92216.10 tCO2e", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "แผนล้างแอร์/แผงโซล่าเซลล์ \n92216.10 tCO2e", "achieved": null, "target_pct": null, "is_ceiling": false, "gap": null, "status": "รอข้อมูล", "calc_note": "ตัวเลขปริมาณ GHG ที่รายงานไตรมาส 3 (92,216.10 tCO2e) สูงกว่าเป้าหมายทั้งปีมาก (2,200 tCO2e) ควรตรวจสอบความถูกต้องของหน่วยข้อมูลก่อนสรุปผล", "auto_calc": false}, {"no": 19, "category_key": "function", "category": "Function Base", "indicator": "การจัดทำคาร์บอนฟุตพริ้นท์\n\n วิธีคำนวณ\n ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงานครบ 5 ขั้นตอน ดังนี้\n 1) เข้าร่วมประชุมชี้แจงวัตถุประสงค์และรายละเอียดโครงการจัดทำคาร์บอนฟุตพริ้นท์\n 2) จัดทำหรือทบทวนคำสั่งแต่งตั้งคณะกรรมการดำเนินงานการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n 3) เข้าร่วมอบรมให้ความรู้ เรื่อง การรวบรวมและรายงานข้อมูลก๊าซเรือนกระจกของหน่วยงานผ่านระบบรายงานข้อมูลก๊าซ\n เรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง\n 4) นำเข้าข้อมูลในระบบรายงานข้อมูลก๊าซเรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง ขององค์การบริหารจัดการ\n ก๊าซเรือนกระจก เพื่อประเมินคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n5) แก้ไขข้อมูลในระบบให้สมบูรณ์ และตอบประเด็นข้อแก้ไขและข้อชี้แจงให้สำนักสิ่งแวดล้อม", "project": "โครงการส่งเสริมการจัดทำคาร์บอนฟุต\n พริ้นซ์ของกรุงเทพมหานคร \n\n รหัส\n KRs 42404", "target": "1 ค่าคาร์บอนฟุตพริ้นท์", "q1": "ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงานครบ 5 ขั้นตอน ดังนี้\n 1) เข้าร่วมประชุมชี้แจงวัตถุประสงค์และรายละเอียดโครงการจัดทำคาร์บอนฟุตพริ้นท์\n 2) จัดทำหรือทบทวนคำสั่งแต่งตั้งคณะกรรมการดำเนินงานการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n 3) เข้าร่วมอบรมให้ความรู้ เรื่อง การรวบรวมและรายงานข้อมูลก๊าซเรือนกระจกของหน่วยงานผ่านระบบรายงานข้อมูลก๊าซ\n เรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง\n 4) นำเข้าข้อมูลในระบบรายงานข้อมูลก๊าซเรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง ขององค์การบริหารจัดการ ก๊าซเรือนกระจก เพื่อประเมินคาร์บอนฟุตพริ้นท์ของหน่วยงาน", "q2": "ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงานครบ 5 ขั้นตอน ดังนี้\n 1) เข้าร่วมประชุมชี้แจงวัตถุประสงค์และรายละเอียดโครงการจัดทำคาร์บอนฟุตพริ้นท์\n 2) จัดทำหรือทบทวนคำสั่งแต่งตั้งคณะกรรมการดำเนินงานการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n 3) เข้าร่วมอบรมให้ความรู้ เรื่อง การรวบรวมและรายงานข้อมูลก๊าซเรือนกระจกของหน่วยงานผ่านระบบรายงานข้อมูลก๊าซ\n เรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง\n 4) นำเข้าข้อมูลในระบบรายงานข้อมูลก๊าซเรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง ขององค์การบริหารจัดการ ก๊าซเรือนกระจก เพื่อประเมินคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n5) แก้ไขข้อมูลในระบบให้สมบูรณ์ และตอบประเด็นข้อแก้ไขและข้อชี้แจงให้สำนักสิ่งแวดล้อม", "q3": "ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงานครบ 5 ขั้นตอน ดังนี้\n 1) เข้าร่วมประชุมชี้แจงวัตถุประสงค์และรายละเอียดโครงการจัดทำคาร์บอนฟุตพริ้นท์\n 2) จัดทำหรือทบทวนคำสั่งแต่งตั้งคณะกรรมการดำเนินงานการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n 3) เข้าร่วมอบรมให้ความรู้ เรื่อง การรวบรวมและรายงานข้อมูลก๊าซเรือนกระจกของหน่วยงานผ่านระบบรายงานข้อมูลก๊าซ\n เรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง\n 4) นำเข้าข้อมูลในระบบรายงานข้อมูลก๊าซเรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง ขององค์การบริหารจัดการ ก๊าซเรือนกระจก เพื่อประเมินคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n5) แก้ไขข้อมูลในระบบให้สมบูรณ์ และตอบประเด็นข้อแก้ไขและข้อชี้แจงให้สำนักสิ่งแวดล้อม", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงานครบ 5 ขั้นตอน ดังนี้\n 1) เข้าร่วมประชุมชี้แจงวัตถุประสงค์และรายละเอียดโครงการจัดทำคาร์บอนฟุตพริ้นท์\n 2) จัดทำหรือทบทวนคำสั่งแต่งตั้งคณะกรรมการดำเนินงานการจัดทำคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n 3) เข้าร่วมอบรมให้ความรู้ เรื่อง การรวบรวมและรายงานข้อมูลก๊าซเรือนกระจกของหน่วยงานผ่านระบบรายงานข้อมูลก๊าซ\n เรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง\n 4) นำเข้าข้อมูลในระบบรายงานข้อมูลก๊าซเรือนกระจกขององค์กรปกครองส่วนท้องถิ่นและเมือง ขององค์การบริหารจัดการ ก๊าซเรือนกระจก เพื่อประเมินคาร์บอนฟุตพริ้นท์ของหน่วยงาน\n5) แก้ไขข้อมูลในระบบให้สมบูรณ์ และตอบประเด็นข้อแก้ไขและข้อชี้แจงให้สำนักสิ่งแวดล้อม", "achieved": 100.0, "target_pct": 100.0, "is_ceiling": false, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "ดำเนินการจัดทำคาร์บอนฟุตพริ้นท์ครบทั้ง 5 ขั้นตอนตามเป้าหมาย", "auto_calc": false}, {"no": 20, "category_key": "function", "category": "Function Base", "indicator": "จำนวนหน่วยงานที่ได้รับการประเมินในระดับทองแดง (ดี)\n\n วิธีคำนวณ\n มีผลการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียวกรุงเทพมหานครไม่ต่ำ\n กว่าระดับทองแดง (ดี) คะแนนรวมร้อยละ 60 ขึ้นไป", "project": "โครงการส่งเสริมการดำเนินงานตามเกณฑ์\n การประเมินสำนักงานสีเขียวของ\n กรุงเทพมหานคร (Bangkok Green \n Office)\n\n รหัส\n KRs 42404", "target": "ระดับการประเมินการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียว กรุงเทพมหานคร / ไม่ต่ำกว่าระดับทองแดง (ดี) (คะแนนรวมร้อยละ 60 ขึ้นไป)", "q1": "ระดับการประเมินการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียว กรุงเทพมหานคร \nอยู่ระหว่างดำเนินการ", "q2": "ระดับการประเมินการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียว กรุงเทพมหานคร \nร้อยละ 20.22", "q3": "ระดับการประเมินการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียว กรุงเทพมหานคร \nร้อยละ 42.40", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ระดับการประเมินการดำเนินงานตามเกณฑ์การประเมินสำนักงานสีเขียว กรุงเทพมหานคร \nร้อยละ 42.40", "achieved": 42.4, "target_pct": 60.0, "is_ceiling": false, "gap": -17.6, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 21, "category_key": "function", "category": "Function Base", "indicator": "จำนวนอาคารควบคุมที่มีการใช้พลังงานลดลงปริมาณการใช้พลังงานของอาคาร\n ควบคุมลดลง\n\n วิธีคำนวณ\n คำนวณจากปริมาณการใช้พลังงานไฟฟ้าของอาคารควบคุมที่ลดลงได้\n  สูตรคำนวณ \n ปริมาณการใช้พลังงานไฟฟ้าของอาคารควบคุมปี พ.ศ.2569 (ตุลาคม 2568 –  กรกฎาคม 2569) ลบปริมาณการใช้พลังงาน ไฟฟ้าของอาคารควบคุม ปี พ.ศ. 2568 (ตุลาคม 2567 – กรกฎาคม 2568)", "project": "โครงการส่งเสริมการอนุรักษ์และใช้พลังงานอย่างมีประสิทธิภาพ \n\n รหัส\n KRs 42502", "target": "ลดลงจากปี 2568", "q1": "ปริมาณการใช้ไฟฟ้าปี 69  = 2563000.00\nปริมาณการใช้ไฟฟ้าปี 68  = 8450000.00\nจำนวนอาคารควบคุมที่มีการใช้พลังงานลดลงปริมาณการใช้พลังงานของอาคารควบคุมลดลง - 5887000.00", "q2": "ปริมาณการใช้ไฟฟ้าปี 69  = 7031000.00\nปริมาณการใช้ไฟฟ้าปี 68  = 3993000.00\nจำนวนอาคารควบคุมที่มีการใช้พลังงานลดลงปริมาณการใช้พลังงานของอาคารควบคุมลดลง 3038000.00", "q3": "ปริมาณการใช้ไฟฟ้าปี 69  = 6352000.00\nปริมาณการใช้ไฟฟ้าปี 68  = 6989000.00\nจำนวนอาคารควบคุมที่มีการใช้พลังงานลดลงปริมาณการใช้พลังงานของอาคารควบคุมลดลง \n- 637000.00", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ปริมาณการใช้ไฟฟ้าปี 69  = 6352000.00\nปริมาณการใช้ไฟฟ้าปี 68  = 6989000.00\nจำนวนอาคารควบคุมที่มีการใช้พลังงานลดลงปริมาณการใช้พลังงานของอาคารควบคุมลดลง \n- 637000.00", "achieved": null, "target_pct": null, "is_ceiling": false, "gap": null, "status": "ถึงเป้า", "calc_note": "ปริมาณการใช้ไฟฟ้าไตรมาส 3 ปี 2569 (6,352,000 หน่วย) ลดลงจากปี 2568 (6,989,000 หน่วย) ลดลง 637,000 หน่วย เป็นไปตามเป้าหมาย", "auto_calc": false}, {"no": 22, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของคนพิการที่ได้รับการจ้างงานจาก กทม.\n\n วิธีคำนวณ\n จำนวนคนพิการที่ได้รับการจ้างงานตามมาตรา 33 หรือ 35 หารด้วย จำนวนข้าราชการและลูกจ้างประจำในสังกัดหน่วยงาน   คูณด้วย 100\n (อ้างอิงข้อมูลจำนวนข้าราชการและลูกจ้างประจำในกรุงเทพมหานคร จาก data Bangkok ณ วันที่ 1 ตุลาคม ของปี 2568)", "project": "โครงการส่งเสริมการจ้างงานคนพิการใน\n สังกัดสำนักการแพทย์ \n\n รหัส\n KRs 71105", "target": "ร้อยละ 100", "q1": "จำนวนคนพิการที่จ้างงาน จำนวน 4 คน\nจำนวนข้าราชการและลูกจ้างทั้งหมด\n จำนวน 1,218 คน\n ร้อยละ 0.33", "q2": "จำนวนคนพิการที่จ้างงาน จำนวน 4 คน\nจำนวนข้าราชการและลูกจ้างทั้งหมด \nจำนวน 1,205 คน\n ร้อยละ 0.33", "q3": "จำนวนคนพิการที่จ้างงาน จำนวน 4 คน\nจำนวนข้าราชการและลูกจ้างทั้งหมด \nจำนวน 1,236 คน\n ร้อยละ 0.32", "q4": "", "note": "ปัญหา/อุปสรรค\n - โรงพยาบาลได้ประกาศรับสมัครเพื่อจ้างคนพิการแล้ว แต่มีผู้มาสมัครไม่ครบตามจำนวนที่ประกาศ \n - กฏหมายเปิดโอกาสให้หน่วยงานสามารถดำเนินการตามมาตรา 35 แทนการจ้างงานได้ เช่นการสัมปทานการจัดจำหน่ายสินค้าหรือบริการ การจ้างเหมาบริการ เป็นต้น แต่ในทางปฏิบัติพบว่ามีขั้นตอนที่ซับซ้อน มีรายละเอียดและเงื่อนไขที่ต้องพิจารณาจำนวนมาก โดยผู้พิจารณาอนุมัติให้ดำเนินการตามมาตรา 35 ได้คือสำนักงานจัดหางานเขตพื้นที่ ทั้งนี้ผู้พิการจะรับสิทธิตามมาตรา 35 ได้ 1 รายต่อ 1 สิทธิ์ เท่านั้น", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนคนพิการที่จ้างงาน จำนวน 4 คน\nจำนวนข้าราชการและลูกจ้างทั้งหมด \nจำนวน 1,236 คน\n ร้อยละ 0.32", "achieved": 0.32, "target_pct": 100.0, "is_ceiling": false, "gap": -99.68, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 23, "category_key": "function", "category": "Function Base", "indicator": "ร้อยละของการออกบัตรคนพิการ ณ โรงพยาบาล ภายในระยะเวลา 30 นาที\n\n วิธีคำนวณ\n จำนวนคนพิการที่ได้รับบริการออกบัตรประจำตัว คนพิการ ภายใน 30 นาที หารด้วย จำนวนคนพิการที่ได้รับบริการออกบัตร  ประจำตัวคนพิการภายใน 1 วัน  ทั้งหมด คูณด้วย 100", "project": "กิจกรรมศูนย์บริการคนพิการแบบ\n เบ็ดเสร็จ (One Stop Service for \n Persons with disabilities) \n\n  รหัส\n KRs 82105", "target": "ร้อยละ 90", "q1": "คนพิการที่ได้บัตรใน 30 นาที  จำนวน 123 คน\nคนพิการที่ได้บัตรภายใน 1 วันทั้งหมด  \nจำนวน 126 คน\nร้อยละ 97.62", "q2": "คนพิการที่ได้บัตรใน 30 นาที  จำนวน 167 คน\nคนพิการที่ได้บัตรภายใน 1 วันทั้งหมด  \nจำนวน 167 คน\nร้อยละ 100", "q3": "คนพิการที่ได้บัตรใน 30 นาที  จำนวน 72 คน\nคนพิการที่ได้บัตรภายใน 1 วันทั้งหมด  \nจำนวน 72 คน\nร้อยละ 100", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "คนพิการที่ได้บัตรใน 30 นาที  จำนวน 72 คน\nคนพิการที่ได้บัตรภายใน 1 วันทั้งหมด  \nจำนวน 72 คน\nร้อยละ 100", "achieved": 100.0, "target_pct": 90.0, "is_ceiling": false, "gap": 10.0, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 24, "category_key": "function", "category": "Function Base", "indicator": "ทุกหน่วยงานรายงานผลการดำเนินงานในระบบ BMA Policy Tracking\n\n วิธีคำนวณ\n ความสำเร็จของการรายงานผลการดำเนินงานของตัวชี้วัดผลหลัก (KRs) และขั้นตอนการดำเนินงาน (APs) ของโครงการ/กิจกรรมของหน่วยงาน หากทำได้ครบทุกโครงการให้ถือว่าการดำเนินการสำเร็จ (คะแนนเต็ม) และหากทำได้ไม่ครบทุก\n โครงการให้คิดคะแนนตามสัดส่วน", "project": "กิจกรรมการรายงานความคืบหน้าในระบบ \n BMA Policy Tracking ของสำนัก\n การแพทย์ \n\n รหัส\n KRs 91313", "target": "ร้อยละของจำนวนโครงการ/กิจกรรม\n  ที่รายงานผลการดำเนินงานได้ครบถ้วน\n ร้อยละ 90", "q1": "ร้อยละของจำนวนโครงการ/กิจกรรม\n  ที่รายงานผลการดำเนินงานได้ครบถ้วน\n ทั้งหมด 10 โครงการ\n ร้อยละ 100", "q2": "ร้อยละของจำนวนโครงการ/กิจกรรม\n  ที่รายงานผลการดำเนินงานได้ครบถ้วน\n ทั้งหมด 10 โครงการ\n ร้อยละ 100", "q3": "ร้อยละของจำนวนโครงการ/กิจกรรม\n  ที่รายงานผลการดำเนินงานได้ครบถ้วน\n ทั้งหมด 10 โครงการ\n ร้อยละ 100", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ร้อยละของจำนวนโครงการ/กิจกรรม\n  ที่รายงานผลการดำเนินงานได้ครบถ้วน\n ทั้งหมด 10 โครงการ\n ร้อยละ 100", "achieved": 100.0, "target_pct": 90.0, "is_ceiling": false, "gap": 10.0, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 25, "category_key": "potential", "category": "Potential Base", "indicator": "ร้อยละของการเบิกจ่ายงบประมาณในภาพรวม กำหนดค่าน้ำหนักคะแนน ร้อยละ 10  รับผิดชอบโดยสำนักงบประมาณกรุงเทพมหานคร", "project": "การเบิกจ่ายงบประมาณตามแผน", "target": "ร้อยละ 87", "q1": "ร้อยละการเบิกจ่ายงบประมาณของส่วนราชการ \nร้อยละ 15.70", "q2": "ร้อยละการเบิกจ่ายงบประมาณของส่วนราชการ \nร้อยละ 40.10", "q3": "ร้อยละการเบิกจ่ายงบประมาณของส่วนราชการ \nร้อยละ 65.50", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ร้อยละการเบิกจ่ายงบประมาณของส่วนราชการ \nร้อยละ 65.50", "achieved": 65.5, "target_pct": 87.0, "is_ceiling": false, "gap": -21.5, "status": "เสี่ยง", "calc_note": "", "auto_calc": true}, {"no": 26, "category_key": "potential", "category": "Potential Base", "indicator": "ร้อยละความสำเร็จในการพัฒนานวัตกรรมเพื่อเพิ่มประสิทธิภาพการปฏิบัติงานของหน่วยงาน กำหนดค่า\n น้ำหนักคะแนนร้อยละ 5 รับผิดชอบ โดยสำนักงานคณะกรรมการข้าราชการกรุงเทพมหานคร", "project": "โครงการพัฒนานวัตกรรมเพิ่มประสิทธิภาพการปฏิบัติงานของสำนักการแพทย์", "target": "ร้อยละ 5", "q1": "การพัฒนานวัตกรรมเพื่อเพิ่มประสิทธิภาพการ ปฏิบัติงานของหน่วยงาน  ร้อยละ 5", "q2": "การพัฒนานวัตกรรมเพื่อเพิ่มประสิทธิภาพการ ปฏิบัติงานของหน่วยงาน  ร้อยละ 5", "q3": "การพัฒนานวัตกรรมเพื่อเพิ่มประสิทธิภาพการ ปฏิบัติงานของหน่วยงาน  ร้อยละ 5", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "การพัฒนานวัตกรรมเพื่อเพิ่มประสิทธิภาพการ ปฏิบัติงานของหน่วยงาน  ร้อยละ 5", "achieved": 5.0, "target_pct": 5.0, "is_ceiling": false, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "", "auto_calc": true}, {"no": 27, "category_key": "potential", "category": "Potential Base", "indicator": "ระดับความสำเร็จในการยกระดับการเปลี่ยนผ่านดิจิทัลภาครัฐเพื่อบริหารราชการ ที่ยืดหยุ่นโปร่งใสคล่องตัว กำหนดค่าน้ำหนักคะแนน ร้อยละ 5 รับผิดชอบ โดยสำนักยุทธศาสตร์และประเมินผล", "project": "กิจกรรมการยกระดับการเปลี่ยนผ่านดิจิทัล\n ภาครัฐเพื่อบริหารราชการที่ยืดหยุ่น โปร่งใส \n คล่องตัว", "target": "ร้อยละ 5", "q1": "ดำเนินการรายงานความสำเร็จในการยกระดับการเปลี่ยนผ่านดิจิทัลภาครัฐเพื่อบริหารราชการ\nที่ยืดหยุ่นโปร่งใส คล่องตัว โดยรายงานขั้นตอน \nบซ. 1 – บซ. 3", "q2": "ดำเนินการรายงานความสำเร็จในการยกระดับการเปลี่ยนผ่านดิจิทัลภาครัฐเพื่อบริหารราชการ\nที่ยืดหยุ่นโปร่งใส คล่องตัว โดยรายงานขั้นตอน \nบซ. 1 – บซ. 6", "q3": "ดำเนินการรายงานความสำเร็จในการยกระดับการเปลี่ยนผ่านดิจิทัลภาครัฐเพื่อบริหารราชการ\nที่ยืดหยุ่นโปร่งใส คล่องตัว โดยรายงานขั้นตอน \nบซ. 1 – บซ. 7 \nจัดทำเอกสารการรับมือเชิงรุก บซ.7 ไปยังสำนักการแพทย์ ภายในวันที่ 30 เมษายน 2569", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ดำเนินการรายงานความสำเร็จในการยกระดับการเปลี่ยนผ่านดิจิทัลภาครัฐเพื่อบริหารราชการ\nที่ยืดหยุ่นโปร่งใส คล่องตัว โดยรายงานขั้นตอน \nบซ. 1 – บซ. 7 \nจัดทำเอกสารการรับมือเชิงรุก บซ.7 ไปยังสำนักการแพทย์ ภายในวันที่ 30 เมษายน 2569", "achieved": null, "target_pct": 5.0, "is_ceiling": false, "gap": null, "status": "รอข้อมูล", "calc_note": "", "auto_calc": true}, {"no": 28, "category_key": "potential", "category": "Potential Base", "indicator": "ระดับคะแนนของการรายงานความคืบหน้าในระบบ BMA Policy Tracking กำหนดค่าน้ำหนักคะแนน ร้อยละ 5 \n รับผิดชอบโดยสำนักยุทธศาสตร์และประเมินผล", "project": "กิจกรรมการรายงานความคืบหน้าในระบบ BMA Policy Tracking ของสำนักการแพทย์", "target": "ร้อยละ 100", "q1": "ดำเนินงานได้ครบถ้วน ทั้ง 10 โครงการในระบบ BMA Policy Tracking", "q2": "ดำเนินงานได้ครบถ้วน ทั้ง 10 โครงการในระบบ BMA Policy Tracking", "q3": "ดำเนินงานได้ครบถ้วน ทั้ง 10 โครงการในระบบ BMA Policy Tracking", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "ดำเนินงานได้ครบถ้วน ทั้ง 10 โครงการในระบบ BMA Policy Tracking", "achieved": 100.0, "target_pct": 100.0, "is_ceiling": false, "gap": 0.0, "status": "ถึงเป้า", "calc_note": "รายงานผลครบถ้วนทั้ง 10 โครงการในระบบ BMA Policy Tracking (ร้อยละ 100)", "auto_calc": false}, {"no": 29, "category_key": "potential", "category": "Potential Base", "indicator": "ร้อยละความพึงพอใจของผู้มีส่วนได้ส่วนเสียจากภายนอก (คะแนนการประเมิน EIT จากสำนักงาน ป.ป.ช.)\n กำหนดค่าน้ำหนักคะแนนร้อยละ5  รับผิดชอบ โดยสำนักงานคณะกรรมการ-ข้าราชการกรุงเทพมหานคร", "project": "กิจกรรมสำรวจความพึงพอใจของผู้มีส่วนได้\n ส่วนเสียจากภายนอก ประจำปีงบประมาณ \n พ.ศ. 2569", "target": "ร้อยละ 100", "q1": "อยู่ระหว่างสำนักการแพทย์ เวียนแจ้งทุกหน่วยงานสำรวจความพึงพอใจของผู้มีส่วนได้\n ส่วนเสียจากภายนอก", "q2": "อยู่ระหว่างสำนักการแพทย์ เวียนแจ้งทุกหน่วยงานสำรวจความพึงพอใจของผู้มีส่วนได้\n ส่วนเสียจากภายนอก", "q3": "อยู่ระหว่างสำนักการแพทย์ เวียนแจ้งทุกหน่วยงานสำรวจความพึงพอใจของผู้มีส่วนได้\n ส่วนเสียจากภายนอก", "q4": "", "note": "สำนักการแพทย์ได้ดำเนินการเผยแพร่ประชาสัมพันธ์ช่องทางการตอบแบบวัดการรับรู้ของผู้มีส่วนได้ส่วนเสียภายนอก (EIT) เพื่อให้ผู้มาติดต่อหรือรับบริการมีส่วนร่วมในการตอบแบบวัดการรับรู้ (EIT) โดยกำหนดให้มีจำนวนขั้นต่ำ 40 คน (ภาพรวมสำนักการแพทย์) ภายในวันที่ 30 มิถุนายน 2569 (ก่อนเวลา 17.00 น.)", "latest_label": "ไตรมาส 3", "latest_text": "อยู่ระหว่างสำนักการแพทย์ เวียนแจ้งทุกหน่วยงานสำรวจความพึงพอใจของผู้มีส่วนได้\n ส่วนเสียจากภายนอก", "achieved": null, "target_pct": 100.0, "is_ceiling": false, "gap": null, "status": "รอข้อมูล", "calc_note": "", "auto_calc": true}, {"no": 30, "category_key": "strategic", "category": "ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน", "indicator": "จำนวนประชาชนเข้ารับการตรวจสุขภาพประจำปี / 1,000,000 คน\n (สะสม ปี 2567 – 2569)\n\n วิธีการคำนวณ\n นับจำนวน (สะสมตั้งแต่ปี 2567 – 2569)", "project": "โครงการตรวจคัดกรองสุขภาพประชาชนในเขตพื้นที่กรุงเทพมหานคร", "target": "1,000,000 คน", "q1": "จำนวนประชาชนเข้ารับการตรวจสุขภาพประจำปี \n (สะสม ปี 2567 – 2569)\n115,158 คน", "q2": "จำนวนประชาชนเข้ารับการตรวจสุขภาพประจำปี \n (สะสม ปี 2567 – 2569)\n 130,450 คน", "q3": "จำนวนประชาชนเข้ารับการตรวจสุขภาพประจำปี \n (สะสม ปี 2567 – 2569)\n 137,183 คน", "q4": "", "note": "", "latest_label": "ไตรมาส 3", "latest_text": "จำนวนประชาชนเข้ารับการตรวจสุขภาพประจำปี \n (สะสม ปี 2567 – 2569)\n 137,183 คน", "achieved": 13.7, "target_pct": 100.0, "is_ceiling": false, "gap": -86.3, "status": "เสี่ยง", "calc_note": "ยอดสะสมผู้เข้ารับการตรวจสุขภาพ 137,183 คน จากเป้าหมายสะสม 1,000,000 คน (ปี 2567-2569) คิดเป็นร้อยละ 13.72 ของเป้าหมายสะสม", "auto_calc": false}]</script>
+<script id="part3DataRaw" type="application/json">[{"no": 1, "project": "ประชุมวิชาการ เรื่อง การป้องกันและควบคุมการติดเชื้อในโรงพยาบาล ประจำปี 2569", "budget": "63,300", "schedule": "10 - 11 ส.ค.69", "owner": "หน่วยป้องกันและควบคุมการติดเชื้อ\nในโรงพยาบาล IC", "note": ""}, {"no": 2, "project": "พัฒนาภาวะผู้นำทางการพยาบาลระดับต้น", "budget": "110,000", "schedule": "7 – 9, 5 – 16 ก.ค. 69", "owner": "ฝ่ายการพยาบาล", "note": ""}, {"no": 3, "project": "อบรมเชิงปฏิบัติการ เรื่อง การพัฒนาสมรรถนะ การช่วยฟื้นคืนชีพขั้นสูงสำหรับบุคลากรพยาบาล", "budget": "48,900", "schedule": "5 - 6 ,9 - 10 มี.ค. 69\nสรุปรายงาน ส่งสนพ.เรียบร้อย", "owner": "ฝ่ายการพยาบาล", "note": ""}, {"no": 4, "project": "อบรมเชิงปฏิบัติการ เรื่อง การพยาบาลผู้ป่วยวิกฤตในหอผู้ป่วยทั่วไป", "budget": "31,300", "schedule": "22 – 23 เม.ย. 69\nสรุปรายงาน ส่งสนพ.เรียบร้อย", "owner": "ฝ่ายการพยาบาล", "note": ""}, {"no": 5, "project": "ประชุมใหญ่วิชาการพยาบาลประจำปี : การจัดการข้อมูลด้วยเทคโนโลยีดิจิทัล", "budget": "60,200", "schedule": "14 – 15 พ.ค. 69", "owner": "ฝ่ายการพยาบาล", "note": ""}, {"no": 6, "project": "อบรมเชิงปฏิบัติการ เรื่อง การป้องกันและระงับ อัคคีภัย", "budget": "127,800", "schedule": "21 - 22 ก.ค. 69", "owner": "คณะกรรมการป้องกันและระงับอัคคีภัย", "note": ""}, {"no": 7, "project": "ฝึกอบรมเชิงปฏิบัติการเพื่อสร้างสรรค์นวัตกรรม", "budget": "71,400", "schedule": "26 ก.พ., 30 มี.ค., 28 เม.ย. 69\nสรุปรายงาน ส่งสนพ.เรียบร้อย", "owner": "กลุ่มงานส่งเสริมการวิจัย", "note": ""}, {"no": 8, "project": "ทุนส่งเสริมการวิจัยทางการแพทย์และสาธารณสุข", "budget": "200,000", "schedule": "1 9.8. – 30 ก.ย. .69", "owner": "กลุ่มงานส่งเสริมการวิจัย", "note": ""}, {"no": 9, "project": "กีฬาสัมพันธ์รักษ์สุขภาพผู้สูงอายุสำนักการแพทย์ ปี 2569", "budget": "700000\n(เงินบำรุงสนพ.)", "schedule": "ยกเลิก\n(ข้อสั่งการของปลัด กทม. เกี่ยวกับแนวทางการวางตัวเป็นกลางทางการเมือง งดจัดโครงการและกิจกรรมเกี่ยวกับมวลชนให้หน่วยงานต่าง ๆ ของ กทม. \nถือปฏิบัติอย่างเคร่งครัด)", "owner": "กลุ่มงานเวชศาสตร์ชุมชน", "note": ""}, {"no": 10, "project": "สัมมนาวิชาการเครือข่ายโรงพยาบาลคุณภาพ และมหกรรมคุณภาพ (HA)", "budget": "227,400", "schedule": "23 - 24 ก.ค. 69", "owner": "กลุ่มงานพัฒนาคุณภาพ", "note": ""}]</script>
+
+<script>
+const BASE_KPI = JSON.parse(document.getElementById('kpiDataRaw').textContent);
+const PART3 = JSON.parse(document.getElementById('part3DataRaw').textContent);
+const STORAGE_KEY = 'rpk_kpi_overrides_v1';
+
+let userOverrides = {};
+let kpiData = [];
+let activeCategory = 'all';
+let searchTerm = '';
+let quarterMode = 'latest';
+let editingItem = null;
+
+const CATS = [
+  {key:'all', label:'ทั้งหมด'},
+  {key:'agenda', label:'Agenda Base'},
+  {key:'function', label:'Function Base'},
+  {key:'potential', label:'Potential Base'},
+  {key:'strategic', label:'ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน'},
+];
+
+const STATUS_META = {
+  'ถึงเป้า':   {cls:'sb-ok',     bar:'var(--ok)',    tint:'var(--ok-tint)'},
+  'เฝ้าระวัง': {cls:'sb-watch',  bar:'var(--watch)', tint:'var(--watch-tint)'},
+  'เสี่ยง':    {cls:'sb-risk',   bar:'var(--risk)',  tint:'var(--risk-tint)'},
+  'รอข้อมูล':  {cls:'sb-pending',bar:'var(--pending)',tint:'var(--pending-tint)'},
+};
+
+function extractPercents(text){
+  if(!text) return [];
+  const re = /ร้อยละ\s*([\d,]+\.?\d*)/g;
+  let m, out=[];
+  while((m = re.exec(text)) !== null){ out.push(parseFloat(m[1].replace(/,/g,''))); }
+  return out;
+}
+
+function recompute(item){
+  // apply overrides
+  const ov = userOverrides[item.no];
+  const q1 = ov && ov.q1 !== undefined ? ov.q1 : item.q1;
+  const q2 = ov && ov.q2 !== undefined ? ov.q2 : item.q2;
+  const q3 = ov && ov.q3 !== undefined ? ov.q3 : item.q3;
+  const q4 = ov && ov.q4 !== undefined ? ov.q4 : item.q4;
+  const note = ov && ov.note !== undefined ? ov.note : item.note;
+
+  let latest_label = null, latest_text = '';
+  if(q4){ latest_label='ไตรมาสที่ 4'; latest_text=q4; }
+  else if(q3){ latest_label='ไตรมาสที่ 3'; latest_text=q3; }
+  else if(q2){ latest_label='ไตรมาสที่ 2'; latest_text=q2; }
+  else if(q1){ latest_label='ไตรมาสที่ 1'; latest_text=q1; }
+
+  let status = item.status, achieved = item.achieved, gap = item.gap, calc_note = item.calc_note, auto_calc = item.auto_calc;
+
+  if(ov && ov.recalc){
+    const pcts = extractPercents(latest_text);
+    achieved = pcts.length ? pcts[pcts.length-1] : null;
+    const targetPct = item.target_pct;
+    auto_calc = true;
+    calc_note = '';
+    if(achieved !== null && targetPct !== null){
+      const ratio = achieved/targetPct;
+      gap = Math.round((achieved-targetPct)*100)/100;
+      if(item.is_ceiling){
+        status = achieved<=targetPct ? 'ถึงเป้า' : (achieved<=targetPct*1.2 ? 'เฝ้าระวัง' : 'เสี่ยง');
+      } else {
+        status = achieved>=targetPct ? 'ถึงเป้า' : (ratio>=0.8 ? 'เฝ้าระวัง' : 'เสี่ยง');
+      }
+    } else {
+      status = 'รอข้อมูล';
+      gap = null;
+    }
+  }
+
+  return Object.assign({}, item, {q1,q2,q3,q4,note,latest_label,latest_text,status,achieved,gap,calc_note,auto_calc});
+}
+
+function loadOverrides(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    userOverrides = raw ? JSON.parse(raw) : {};
+  }catch(e){ userOverrides = {}; }
+}
+function persistOverrides(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(userOverrides)); }catch(e){}
+}
+function rebuildData(){
+  kpiData = BASE_KPI.map(recompute);
+}
+
+function fmtDate(d){
+  const opts = {year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'};
+  return d.toLocaleString('th-TH', opts);
+}
+
+function renderStatCards(){
+  const total = kpiData.length;
+  const counts = {'ถึงเป้า':0,'เฝ้าระวัง':0,'เสี่ยง':0,'รอข้อมูล':0};
+  kpiData.forEach(k=>counts[k.status]++);
+  const calculated = total - counts['รอข้อมูล'];
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = `
+    <div class="stat-card k-total"><div class="stat-icon"></div><div class="num tabular">${total}</div><div class="lbl">ตัวชี้วัดทั้งหมด</div><div class="sub">รวมทุกองค์ประกอบ (ไม่รวมส่วนที่ 3)</div></div>
+    <div class="stat-card k-total"><div class="stat-icon"></div><div class="num tabular">${calculated}</div><div class="lbl">คำนวณสถานะได้</div><div class="sub">มีตัวเลขร้อยละเทียบเป้าหมายชัดเจน</div></div>
+    <div class="stat-card k-ok"><div class="stat-icon"></div><div class="num tabular">${counts['ถึงเป้า']}</div><div class="lbl">ถึงเป้าหมาย</div><div class="sub">ผลล่าสุดเทียบเท่าหรือดีกว่าเป้า</div></div>
+  `;
+}
+
+function renderCategoryBars(){
+  const cats = CATS.filter(c=>c.key!=='all');
+  const max = Math.max(...cats.map(c=> kpiData.filter(k=>k.category_key===c.key).length ));
+  const el = document.getElementById('categoryBars');
+  el.innerHTML = cats.map(c=>{
+    const n = kpiData.filter(k=>k.category_key===c.key).length;
+    const pct = max? (n/max*100):0;
+    return `<div class="cat-row">
+      <span class="cat-name">${c.label}</span>
+      <span class="cat-track"><span class="cat-fill" style="width:${pct}%"></span></span>
+      <span class="cat-count tabular">${n}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTabs(){
+  const el = document.getElementById('catTabs');
+  el.innerHTML = CATS.map(c=>{
+    const n = c.key==='all'? kpiData.length : kpiData.filter(k=>k.category_key===c.key).length;
+    return `<button class="tab ${activeCategory===c.key?'active':''}" data-cat="${c.key}">${c.label} <span class="cnt">${n}</span></button>`;
+  }).join('');
+  el.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeCategory = btn.dataset.cat; renderTabs(); renderList(); });
+  });
+}
+
+function getQuarterText(item, mode){
+  if(mode==='latest') return {label:item.latest_label || 'ยังไม่มีข้อมูล', text:item.latest_text || 'ยังไม่มีข้อมูลรายงานผล', hasData: !!item.latest_text};
+  const map = {q1:['ไตรมาสที่ 1',item.q1], q2:['ไตรมาสที่ 2',item.q2], q3:['ไตรมาสที่ 3',item.q3], q4:['ไตรมาสที่ 4',item.q4]};
+  const [label, text] = map[mode];
+  return {label, text: text || 'ยังไม่มีข้อมูลไตรมาสนี้', hasData: !!text};
+}
+
+const GOAL_SCALE = 150; // the bar track represents 0%–150% of target
+const GOAL_TARGET_POS = (100/GOAL_SCALE)*100; // fixed position (%) marking "at target"
+
+function goalBarWidth(item){
+  if(item.achieved===null || item.achieved===undefined || item.target_pct===null || item.target_pct===undefined || !item.target_pct) return null;
+  let ratioPct = (item.achieved/item.target_pct)*100;
+  if(item.is_ceiling){ ratioPct = item.achieved? (item.target_pct/item.achieved)*100 : 100; }
+  const fillPct = Math.max(3, Math.min(ratioPct, GOAL_SCALE)) / GOAL_SCALE * 100;
+  return fillPct;
+}
+
+function renderList(){
+  const container = document.getElementById('kpiListContainer');
+  const term = searchTerm.trim().toLowerCase();
+  let items = kpiData.filter(k=>{
+    if(activeCategory!=='all' && k.category_key!==activeCategory) return false;
+    if(term){
+      const hay = (k.indicator+' '+k.project).toLowerCase();
+      if(!hay.includes(term)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('listCountLabel').textContent = `แสดง ${items.length} จาก ${kpiData.length} รายการ`;
+
+  if(items.length===0){
+    container.innerHTML = `<div class="empty-state">ไม่พบตัวชี้วัดที่ตรงกับเงื่อนไขการค้นหา</div>`;
+    return;
+  }
+
+  // group by category when 'all'
+  const groups = {};
+  items.forEach(it=>{ (groups[it.category_key] = groups[it.category_key]||[]).push(it); });
+
+  let html = '';
+  Object.keys(groups).forEach(catKey=>{
+    const catLabel = CATS.find(c=>c.key===catKey)?.label || catKey;
+    if(activeCategory==='all'){
+      html += `<div class="group-title">${catLabel}<span class="line"></span><span class="badge">${groups[catKey].length} ตัวชี้วัด</span></div>`;
+    }
+    groups[catKey].forEach(item=>{
+      const qv = getQuarterText(item, quarterMode);
+      const meta = STATUS_META[item.status];
+      const gw = goalBarWidth(item);
+      html += `
+      <div class="kpi-card" data-no="${item.no}">
+        <div class="kpi-main" data-toggle="${item.no}">
+          <div class="kpi-num tabular">${item.no}</div>
+          <div class="kpi-body">
+            <p class="kpi-name">${item.indicator.split('\\n')[0]}</p>
+            <p class="kpi-proj">${(item.project||'').split('\\n')[0]}</p>
+          </div>
+          <div class="kpi-right">
+            <div class="kpi-result-mini">
+              <div class="t-lbl">ผลการดำเนินงาน · ${qv.label}</div>
+              <div class="t-val ${qv.hasData ? '' : 'empty'}" title="${escapeAttr(qv.text)}">${qv.text.split('\\n')[0]}</div>
+            </div>
+            <div class="kpi-target-mini">
+              <div class="t-lbl">เป้าหมาย</div>
+              <div class="t-val" title="${escapeAttr(item.target)}">${(item.target||'').split('\\n')[0]}</div>
+            </div>
+            <span class="status-badge ${meta.cls}"><span class="d" style="background:currentColor"></span>${item.status}</span>
+            <svg class="caret" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="kpi-detail">
+          <div class="detail-grid">
+            <div class="detail-block">
+              <div class="dk">ตัวชี้วัดตามแผนปฏิบัติราชการ</div>
+              <div class="dv">${item.indicator}</div>
+            </div>
+            <div class="detail-block">
+              <div class="dk">โครงการ / กิจกรรม</div>
+              <div class="dv">${item.project || '—'}</div>
+            </div>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-block">
+              <div class="dk">เป้าหมาย</div>
+              <div class="dv">${item.target}</div>
+            </div>
+            <div class="detail-block">
+              <div class="dk">หมายเหตุ</div>
+              <div class="dv">${item.note || 'ไม่มีข้อมูลเพิ่มเติม'}</div>
+            </div>
+          </div>
+          <div class="detail-block" style="margin-top:16px;">
+            <div class="dk">ผลการดำเนินงานรายไตรมาส</div>
+            <div class="quarter-strip">
+              ${['q1','q2','q3','q4'].map((qk,i)=>{
+                const labels=['ไตรมาส 1','ไตรมาส 2','ไตรมาส 3','ไตรมาส 4'];
+                const val = item[qk];
+                const isSelected = quarterMode==='latest'
+                  ? (item.latest_label === (['ไตรมาสที่ 1','ไตรมาสที่ 2','ไตรมาสที่ 3','ไตรมาสที่ 4'][i]))
+                  : (quarterMode===qk);
+                return `<div class="q-box ${isSelected?'q-latest':''}"><div class="ql">${labels[i]}</div><div class="qv ${val?'':'empty'}">${val || 'ไม่มีข้อมูล'}</div></div>`;
+              }).join('')}
+            </div>
+          </div>
+          ${gw!==null ? `
+          <div class="goalbar-wrap">
+            <div class="goalbar-label"><span>ผลล่าสุด: ร้อยละ ${item.achieved}</span><span>เป้าหมาย: ร้อยละ ${item.target_pct}</span></div>
+            <div class="goalbar">
+              <div class="goalbar-fill" style="width:${gw}%; background:${meta.bar}"></div>
+              <div class="goalbar-target" style="left:${GOAL_TARGET_POS}%;"></div>
+            </div>
+          </div>` : ''}
+          ${item.calc_note ? `<div class="calc-note">📌 วิธีคำนวณ: ${item.calc_note}</div>` : ''}
+          <button class="btn btn-ghost btn-sm edit-btn" data-edit="${item.no}">✎ อัปเดตผลการดำเนินงาน</button>
+        </div>
+      </div>`;
+    });
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      el.closest('.kpi-card').classList.toggle('open');
+    });
+  });
+  container.querySelectorAll('[data-edit]').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openEditModal(parseInt(el.dataset.edit));
+    });
+  });
+}
+
+function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+function renderPart3(){
+  const tbody = document.querySelector('#part3Table tbody');
+  tbody.innerHTML = PART3.map(p=>{
+    const cancelled = /ยกเลิก/.test(p.schedule||'');
+    return `<tr>
+      <td class="tabular">${p.no}</td>
+      <td class="p3-name ${cancelled?'p3-cancel':''}">${p.project}${cancelled? '<span class="tag-cancel">ยกเลิก</span>':''}</td>
+      <td class="tabular">${p.budget}</td>
+      <td style="white-space:pre-line;">${p.schedule}</td>
+      <td>${p.owner}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInsights(){
+  const el = document.getElementById('insightList');
+  const watch = kpiData.filter(k=>k.status==='เฝ้าระวัง');
+  const pending = kpiData.filter(k=>k.status==='รอข้อมูล');
+  let html = '';
+
+  if(watch.length){
+    html += `<div class="insight watchit"><div class="ico">🔎</div><div class="txt"><b>${watch.length} ตัวชี้วัดอยู่ในเกณฑ์เฝ้าระวัง</b> (ผลล่าสุดอยู่ระหว่าง 80–99% ของเป้าหมาย) ควรติดตามใกล้ชิดในไตรมาสถัดไป</div></div>`;
+  }
+  if(pending.length){
+    html += `<div class="insight info"><div class="ico">🗂️</div><div class="txt"><b>${pending.length} ตัวชี้วัดยังคำนวณสถานะอัตโนมัติไม่ได้</b> เนื่องจากหน่วยวัดไม่ใช่ร้อยละโดยตรง หรือยังไม่มีการรายงานผล เจ้าหน้าที่สามารถกดปุ่ม "อัปเดตผลการดำเนินงาน" ในรายการเพื่อบันทึกผลและให้ระบบคำนวณสถานะทันที</div></div>`;
+  }
+  html += `<div class="insight info"><div class="ico">⚡</div><div class="txt"><b>เกี่ยวกับการอัปเดตแบบเรียลไทม์:</b> หน้านี้เป็นไฟล์เดี่ยวที่ทำงานในเบราว์เซอร์ ไม่ได้เชื่อมต่อฐานข้อมูลกลาง เมื่อกดบันทึกผลในแต่ละตัวชี้วัด กราฟและสถานะทั้งหมดจะคำนวณใหม่ทันที และข้อมูลจะถูกบันทึกไว้ในเบราว์เซอร์เครื่องนั้น ๆ (ยังไม่ synced ระหว่างผู้ใช้หลายคน) หากต้องการอัปเดตแบบเรียลไทม์ร่วมกันทั้งทีม แนะนำให้เชื่อมกับ Google Sheet/ฐานข้อมูลกลางในเวอร์ชันถัดไป</div></div>`;
+
+  el.innerHTML = html;
+}
+
+function openEditModal(no){
+  editingItem = kpiData.find(k=>k.no===no);
+  document.getElementById('editModalTitle').textContent = 'อัปเดตผลการดำเนินงาน';
+  document.getElementById('editModalSub').textContent = editingItem.indicator.split('\n')[0];
+  document.getElementById('editQuarterSelect').value = 'q4';
+  document.getElementById('editResultText').value = '';
+  document.getElementById('editNoteText').value = editingItem.note || '';
+  document.getElementById('editModal').classList.add('show');
+}
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('show');
+  editingItem = null;
+}
+
+function saveEdit(){
+  if(!editingItem) return;
+  const q = document.getElementById('editQuarterSelect').value;
+  const text = document.getElementById('editResultText').value.trim();
+  const note = document.getElementById('editNoteText').value.trim();
+  if(!text){ showToast('กรุณาระบุผลการดำเนินงานก่อนบันทึก'); return; }
+  const ov = userOverrides[editingItem.no] || {};
+  ov[q] = text;
+  ov.note = note;
+  ov.recalc = true;
+  userOverrides[editingItem.no] = ov;
+  persistOverrides();
+  rebuildData();
+  renderAll();
+  closeEditModal();
+  showToast('บันทึกข้อมูลเรียบร้อย ระบบคำนวณสถานะใหม่แล้ว');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function exportXlsx(){
+  const term = searchTerm.trim().toLowerCase();
+  let items = kpiData.filter(k=>{
+    if(activeCategory!=='all' && k.category_key!==activeCategory) return false;
+    if(term){
+      const hay = (k.indicator+' '+k.project).toLowerCase();
+      if(!hay.includes(term)) return false;
+    }
+    return true;
+  });
+  const rows = items.map(it=>({
+    'ลำดับ': it.no,
+    'หมวด': CATS.find(c=>c.key===it.category_key)?.label || it.category,
+    'ตัวชี้วัดตามแผนปฏิบัติราชการ': it.indicator,
+    'โครงการ/กิจกรรม': it.project,
+    'เป้าหมาย': it.target,
+    'ผลการดำเนินงานล่าสุด': it.latest_text || 'ยังไม่มีข้อมูล',
+    'ไตรมาสล่าสุดที่มีข้อมูล': it.latest_label || '-',
+    'หมายเหตุ': it.note || '',
+  }));
+  const p3rows = PART3.map(p=>({
+    'ลำดับ': p.no, 'โครงการ': p.project, 'งบประมาณ (บาท)': p.budget, 'กำหนดการ': p.schedule, 'หน่วยงานผู้รับผิดชอบ': p.owner
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(rows);
+  ws1['!cols'] = [{wch:6},{wch:16},{wch:55},{wch:35},{wch:25},{wch:45},{wch:16},{wch:35}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'ตัวชี้วัด');
+  const ws2 = XLSX.utils.json_to_sheet(p3rows);
+  ws2['!cols'] = [{wch:6},{wch:55},{wch:16},{wch:25},{wch:25}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'ส่วนที่3 งานประจำ');
+  XLSX.writeFile(wb, 'สรุปตัวชี้วัดแผนปฏิบัติราชการ_2569_โรงพยาบาลกลาง.xlsx');
+  showToast('ส่งออกไฟล์ Excel เรียบร้อย');
+}
+
+function renderAll(){
+  renderStatCards();
+  renderCategoryBars();
+  renderTabs();
+  renderList();
+  renderInsights();
+}
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{ searchTerm = e.target.value; renderList(); });
+document.getElementById('quarterFilter').addEventListener('change', (e)=>{ quarterMode = e.target.value; renderList(); });
+document.getElementById('exportBtn').addEventListener('click', exportXlsx);
+document.getElementById('expandAllBtn').addEventListener('click', ()=>{
+  const cards = document.querySelectorAll('.kpi-card');
+  const anyClosed = Array.from(cards).some(c=>!c.classList.contains('open'));
+  cards.forEach(c=> c.classList.toggle('open', anyClosed));
+  document.getElementById('expandAllBtn').textContent = anyClosed? 'ย่อทั้งหมด':'ขยายทั้งหมด';
+});
+document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
+document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
+document.getElementById('editModal').addEventListener('click', (e)=>{ if(e.target.id==='editModal') closeEditModal(); });
+
+loadOverrides();
+rebuildData();
+renderAll();
+renderPart3();
+document.getElementById('lastUpdated').textContent = fmtDate(new Date());
+</script>
+</body>
+</html>
