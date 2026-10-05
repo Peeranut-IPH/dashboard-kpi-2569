@@ -3,6 +3,7 @@
 
   const C = window.APP_CONFIG || {};
   const API_URL = C.API_URL || "";
+  const SHEET_CSV_URL = C.SHEET_CSV_URL || "";
   const REFRESH_MS = (C.REFRESH_SECONDS || 30) * 1000;
   const PAGE_SIZE = C.PAGE_SIZE || 10;
   const CACHE_KEY = "kpiDashboardV311Lite";
@@ -12,7 +13,8 @@
     "Agenda Base",
     "Function Base",
     "Potential Base",
-    "ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน"
+    "ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน",
+    "งานประจำพื้นฐาน"
   ];
 
   const state = {
@@ -89,6 +91,33 @@
     const q = selectedQuarter(row);
     return Boolean(q && clean(row[q]));
   };
+
+  function parseCsv(text) {
+    const rows = []; let row = []; let cell = ""; let quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      if (ch === '"' && quoted && text[i + 1] === '"') { cell += '"'; i += 1; continue; }
+      if (ch === '"') { quoted = !quoted; continue; }
+      if (ch === ',' && !quoted) { row.push(cell); cell = ""; continue; }
+      if ((ch === '\n' || ch === '\r') && !quoted) { if (ch === '\r' && text[i + 1] === '\n') i += 1; row.push(cell); cell = ""; if (row.some(value => value.trim())) rows.push(row); row = []; continue; }
+      cell += ch;
+    }
+    row.push(cell); if (row.some(value => value.trim())) rows.push(row); return rows;
+  }
+
+  function sheetRowsToData(rows) {
+    const data = []; let category = "";
+    rows.forEach((row, index) => {
+      const first = clean(row[0]); const indicator = clean(row[1]);
+      if (first.includes("องค์ประกอบที่ 1")) category = index < 9 ? "Agenda Base" : "Function Base";
+      else if (first.includes("องค์ประกอบที่ 2")) category = "Potential Base";
+      else if (first.includes("ส่วนที่ 2")) category = "ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน";
+      else if (first.includes("ส่วนที่ 3") || first.includes("โครงการ")) category = "งานประจำพื้นฐาน";
+      if (index < 3 || !/^\d+(\.\d+)?$/.test(first) || !indicator) return;
+      data.push({ no: first, category, indicator, project: clean(row[2]), target: clean(row[3]), q1: clean(row[4]), q2: clean(row[5]), q3: clean(row[6]), q4: clean(row[7]), note: clean(row[8]), unit: "", owner: "" });
+    });
+    return data;
+  }
 
   const extractPercent = text => {
     const s = clean(text).replace(/,/g, "");
@@ -181,18 +210,12 @@
     if (manual) setLoading(true);
 
     try {
-      const separator = API_URL.includes("?") ? "&" : "?";
-      const response = await fetch(
-        `${API_URL}${separator}action=data&t=${Date.now()}`,
-        { cache: "no-store", redirect: "follow" }
-      );
+      const response = await fetch(`${SHEET_CSV_URL}&t=${Date.now()}`, { cache: "no-store" });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const json = await response.json();
-      if (json.status !== "ok") throw new Error(json.message || "API error");
-
-      state.all = (json.data || []).map((row, index) => {
+      const csv = await response.text();
+      state.all = sheetRowsToData(parseCsv(csv)).map((row, index) => {
         const normalized = {
           ...row,
           no: clean(row.no) || String(index + 1),
@@ -202,19 +225,17 @@
         };
 
         // ตัวชี้วัดลำดับ 18 ยังไม่มีข้อมูลไตรมาส 4
-        if (String(normalized.no).trim() === "18") {
-          normalized.q4 = "";
-        }
+        
 
         return normalized;
       });
 
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         rows: state.all,
-        fetchedAt: json.fetched_at || new Date().toISOString()
+        fetchedAt: new Date().toISOString()
       }));
 
-      setConnection(true, json.fetched_at || new Date().toISOString());
+      setConnection(true, new Date().toISOString());
       populateFilters();
       renderAll();
 
