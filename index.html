@@ -327,7 +327,7 @@
     <h1 class="hero">ระบบวิเคราะห์และสรุปตัวชี้วัดแผนปฏิบัติราชการ พ.ศ. 2569</h1>
     <p class="hero-sub">โรงพยาบาลกลาง สำนักการแพทย์ กรุงเทพมหานคร — มุมมองสรุปสำหรับผู้บริหาร และรายละเอียดสำหรับเจ้าหน้าที่ผู้รับผิดชอบตัวชี้วัด</p>
     <div class="topbar-meta">
-      <div class="meta-chip"><span class="label">ข้อมูลตั้งต้นจากไฟล์</span><span class="val" id="sourceFileName">สรุป ตชว. รพก. (Google Sheet)</span></div>
+      <div class="meta-chip"><span class="label">ข้อมูลตั้งต้นจากไฟล์</span><span class="val" id="sourceFileName">สรุปตัวชี้วัด 2569 (Update) 25691005.xlsx</span></div>
       <div class="meta-chip"><span class="label">ไตรมาสล่าสุดที่มีข้อมูล</span><span class="val">ไตรมาสที่ 4 (ก.ค.–ก.ย. 69)</span></div>
       <div class="meta-chip"><span class="label">ปรับปรุงข้อมูลล่าสุด</span><span class="val tabular" id="lastUpdated">—</span></div>
     </div>
@@ -396,7 +396,7 @@
   </div>
 
   <footer>
-    ข้อมูลประมวลผลจาก Google Sheet สรุปตัวชี้วัดแผนปฏิบัติราชการ พ.ศ. 2569 ของโรงพยาบาลกลาง · สถานะคำนวณโดยอัตโนมัติจากข้อมูลไตรมาสล่าสุดเทียบเป้าหมาย โปรดตรวจสอบความถูกต้องกับเจ้าของตัวชี้วัดก่อนใช้อ้างอิงอย่างเป็นทางการ<br>
+    ข้อมูลประมวลผลจากไฟล์ Excel ล่าสุดบน Google Drive · สถานะคำนวณโดยอัตโนมัติจากข้อมูลไตรมาสล่าสุดเทียบเป้าหมาย โปรดตรวจสอบความถูกต้องกับเจ้าของตัวชี้วัดก่อนใช้อ้างอิงอย่างเป็นทางการ<br>
     การแก้ไขข้อมูลผ่านหน้านี้จะบันทึกเฉพาะในเบราว์เซอร์ของผู้ใช้งานแต่ละคน
   </footer>
 
@@ -439,7 +439,7 @@
 const BASE_KPI = JSON.parse(document.getElementById('kpiDataRaw').textContent);
 const PART3 = JSON.parse(document.getElementById('part3DataRaw').textContent);
 const STORAGE_KEY = 'rpk_kpi_overrides_v1';
-const LIVE_CACHE_KEY = 'rpk_kpi_live_q4_v1';
+const LIVE_CACHE_KEY = 'rpk_kpi_live_q4_20261005_v2';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/135RBAPy8cCRVcgHqSqjz7LwfKNsi2OnV/export?format=csv&gid=668685905';
 
 let userOverrides = {};
