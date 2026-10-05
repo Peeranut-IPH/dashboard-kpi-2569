@@ -475,7 +475,9 @@ function sheetToKpis(rows){
     else if(first.includes('ส่วนที่ 3')) section='part3';
     if(section==='part3' || index<3 || !/^\d+(\.\d+)?$/.test(first) || !indicator) return [];
     const label={agenda:'Agenda Base',function:'Function Base',potential:'Potential Base',strategic:'ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน'}[section] || '';
-    return [{no:first,category_key:section,category:label,indicator,project:(row[2]||'').trim(),target:(row[3]||'').trim(),q1:(row[4]||'').trim(),q2:(row[5]||'').trim(),q3:(row[6]||'').trim(),q4:(row[7]||'').trim(),note:(row[8]||'').trim(),status:'รอข้อมูล',achieved:null,gap:null,calc_note:'',auto_calc:true,target_pct:null,is_ceiling:false}];
+    const target=(row[3]||'').trim();
+    const targetValues=extractPercents(target);
+    return [{no:first,category_key:section,category:label,indicator,project:(row[2]||'').trim(),target,q1:(row[4]||'').trim(),q2:(row[5]||'').trim(),q3:(row[6]||'').trim(),q4:(row[7]||'').trim(),note:(row[8]||'').trim(),status:'รอข้อมูล',achieved:null,gap:null,calc_note:'',auto_calc:true,target_pct:targetValues.length?targetValues[0]:null,is_ceiling:/(ไม่เกิน|น้อยกว่า|ต่ำกว่า|≤|<=|สูงสุด)/.test(target),liveSource:true}];
   });
 }
 
@@ -511,9 +513,9 @@ const STATUS_META = {
 
 function extractPercents(text){
   if(!text) return [];
-  const re = /ร้อยละ\s*([\d,]+\.?\d*)/g;
+  const re = /(?:ร้อยละ\s*([\d,]+\.?\d*)|([\d,]+\.?\d*)\s*%)/g;
   let m, out=[];
-  while((m = re.exec(text)) !== null){ out.push(parseFloat(m[1].replace(/,/g,''))); }
+  while((m = re.exec(text)) !== null){ out.push(parseFloat((m[1]||m[2]).replace(/,/g,''))); }
   return out;
 }
 
@@ -544,7 +546,7 @@ function recompute(item){
 
   let status = item.status, achieved = item.achieved, gap = item.gap, calc_note = item.calc_note, auto_calc = item.auto_calc;
 
-  if(ov && ov.recalc && Number(item.no) !== 18){
+  if(item.liveSource || (ov && ov.recalc)){
     const pcts = extractPercents(latest_text);
     achieved = pcts.length ? pcts[pcts.length-1] : null;
     const targetPct = item.target_pct;
@@ -565,7 +567,7 @@ function recompute(item){
   }
 
   // ตัวชี้วัด 18 ใช้หน่วย tCO2e ไม่ใช่ร้อยละ
-  if(Number(item.no) === 18 && !q4){
+  if((item.target||'').includes('tCO2e') && !q4){
     latest_label = q3 ? 'ไตรมาสที่ 3' : (q2 ? 'ไตรมาสที่ 2' : 'ไตรมาสที่ 1');
     latest_text = q3 || q2 || q1 || '';
     achieved = extractUnitNumber(latest_text, 'tCO2e');
