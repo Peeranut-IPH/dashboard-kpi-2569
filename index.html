@@ -540,7 +540,9 @@ function extractUnitNumber(text, unitPattern){
 
 function recompute(item){
   // apply overrides
-  const ov = userOverrides[item.no];
+  // ข้อมูลจากไฟล์บน Google Drive เป็นแหล่งข้อมูลหลักเสมอ
+  // ไม่ให้ค่าที่เคยแก้เฉพาะในเบราว์เซอร์ทับข้อมูลล่าสุดจากไฟล์
+  const ov = item.liveSource ? null : userOverrides[item.no];
   const q1 = ov && ov.q1 !== undefined ? ov.q1 : item.q1;
   const q2 = ov && ov.q2 !== undefined ? ov.q2 : item.q2;
   const q3 = ov && ov.q3 !== undefined ? ov.q3 : item.q3;
@@ -779,7 +781,7 @@ function renderList(){
             </div>
           </div>` : ''}
           ${item.calc_note ? `<div class="calc-note">📌 วิธีคำนวณ: ${item.calc_note}</div>` : ''}
-          <button class="btn btn-ghost btn-sm edit-btn" data-edit="${item.no}">✎ อัปเดตผลการดำเนินงาน</button>
+          ${item.liveSource ? '' : `<button class="btn btn-ghost btn-sm edit-btn" data-edit="${item.no}">✎ อัปเดตผลการดำเนินงาน</button>`}
         </div>
       </div>`;
     });
