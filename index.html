@@ -466,13 +466,13 @@ function parseSheetCsv(text){
 }
 
 function sheetToKpis(rows){
-  let section='';
+  let section='', performanceSectionCount=0;
   return rows.flatMap((row,index)=>{
     const first=(row[0]||'').trim(), indicator=(row[1]||'').trim();
-    if(first.includes('องค์ประกอบที่ 1')) section=index<9?'agenda':'function';
+    if(first.includes('องค์ประกอบที่ 1')){ performanceSectionCount++; section=performanceSectionCount===1?'agenda':'function'; }
     else if(first.includes('องค์ประกอบที่ 2')) section='potential';
-    else if(first.includes('ส่วนที่ 2')) section='strategic';
-    else if(first.includes('ส่วนที่ 3')) section='part3';
+    else if(/ส่วนที่\s*2/.test(first)) section='strategic';
+    else if(/ส่วนที่\s*3/.test(first)) section='part3';
     if(section==='part3' || index<3 || !/^\d+(\.\d+)?$/.test(first) || !indicator) return [];
     const label={agenda:'Agenda Base',function:'Function Base',potential:'Potential Base',strategic:'ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน'}[section] || '';
     const target=(row[3]||'').trim();
