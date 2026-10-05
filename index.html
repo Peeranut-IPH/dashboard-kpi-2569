@@ -328,7 +328,7 @@
     <p class="hero-sub">โรงพยาบาลกลาง สำนักการแพทย์ กรุงเทพมหานคร — มุมมองสรุปสำหรับผู้บริหาร และรายละเอียดสำหรับเจ้าหน้าที่ผู้รับผิดชอบตัวชี้วัด</p>
     <div class="topbar-meta">
       <div class="meta-chip"><span class="label">ข้อมูลตั้งต้นจากไฟล์</span><span class="val" id="sourceFileName">สรุป ตชว. รพก. (Excel)</span></div>
-      <div class="meta-chip"><span class="label">ไตรมาสล่าสุดที่มีข้อมูล</span><span class="val">ไตรมาสที่ 3 (เม.ย.–มิ.ย. 69)</span></div>
+      <div class="meta-chip"><span class="label">ไตรมาสล่าสุดที่มีข้อมูล</span><span class="val">ไตรมาสที่ 4 (ก.ค.–ก.ย. 69)</span></div>
       <div class="meta-chip"><span class="label">ปรับปรุงข้อมูลล่าสุด</span><span class="val tabular" id="lastUpdated">—</span></div>
     </div>
   </div>
@@ -439,6 +439,7 @@
 const BASE_KPI = JSON.parse(document.getElementById('kpiDataRaw').textContent);
 const PART3 = JSON.parse(document.getElementById('part3DataRaw').textContent);
 const STORAGE_KEY = 'rpk_kpi_overrides_v1';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/135RBAPy8cCRVcgHqSqjz7LwfKNsi2OnV/export?format=csv&gid=668685905';
 
 let userOverrides = {};
 let kpiData = [];
@@ -446,6 +447,52 @@ let activeCategory = 'all';
 let searchTerm = '';
 let quarterMode = 'latest';
 let editingItem = null;
+
+function parseSheetCsv(text){
+  const rows=[]; let row=[], cell='', quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"' && quoted && text[i+1]==='"'){ cell+='"'; i++; continue; }
+    if(ch==='"'){ quoted=!quoted; continue; }
+    if(ch===',' && !quoted){ row.push(cell); cell=''; continue; }
+    if((ch==='\n' || ch==='\r') && !quoted){
+      if(ch==='\r' && text[i+1]==='\n') i++;
+      row.push(cell); cell=''; if(row.some(v=>v.trim())) rows.push(row); row=[]; continue;
+    }
+    cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>v.trim())) rows.push(row);
+  return rows;
+}
+
+function sheetToKpis(rows){
+  let section='';
+  return rows.flatMap((row,index)=>{
+    const first=(row[0]||'').trim(), indicator=(row[1]||'').trim();
+    if(first.includes('องค์ประกอบที่ 1')) section=index<9?'agenda':'function';
+    else if(first.includes('องค์ประกอบที่ 2')) section='potential';
+    else if(first.includes('ส่วนที่ 2')) section='strategic';
+    else if(first.includes('ส่วนที่ 3')) section='part3';
+    if(section==='part3' || index<3 || !/^\d+(\.\d+)?$/.test(first) || !indicator) return [];
+    const label={agenda:'Agenda Base',function:'Function Base',potential:'Potential Base',strategic:'ส่วนที่ 2 ยุทธศาสตร์หน่วยงาน'}[section] || '';
+    return [{no:first,category_key:section,category:label,indicator,project:(row[2]||'').trim(),target:(row[3]||'').trim(),q1:(row[4]||'').trim(),q2:(row[5]||'').trim(),q3:(row[6]||'').trim(),q4:(row[7]||'').trim(),note:(row[8]||'').trim(),status:'รอข้อมูล',achieved:null,gap:null,calc_note:'',auto_calc:true,target_pct:null,is_ceiling:false}];
+  });
+}
+
+async function loadCurrentSheet(){
+  try{
+    const response=await fetch(`${SHEET_CSV_URL}&t=${Date.now()}`,{cache:'no-store'});
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    const items=sheetToKpis(parseSheetCsv(await response.text()));
+    if(!items.length) throw new Error('ไม่พบข้อมูลตัวชี้วัด');
+    kpiData=items.map(recompute);
+    const meta=document.querySelector('.topbar-meta .meta-chip:nth-child(2) .val');
+    if(meta) meta.textContent='ไตรมาสที่ 4 (ก.ค.–ก.ย. 69)';
+  }catch(error){
+    console.error('Unable to load current Google Sheet data',error);
+    kpiData=BASE_KPI.map(recompute);
+  }
+}
 
 const CATS = [
   {key:'all', label:'ทั้งหมด'},
@@ -486,8 +533,7 @@ function recompute(item){
   const q1 = ov && ov.q1 !== undefined ? ov.q1 : item.q1;
   const q2 = ov && ov.q2 !== undefined ? ov.q2 : item.q2;
   const q3 = ov && ov.q3 !== undefined ? ov.q3 : item.q3;
-  // ตัวชี้วัดลำดับ 18 ยังไม่มีข้อมูลไตรมาส 4
-  const q4 = Number(item.no) === 18 ? '' : (ov && ov.q4 !== undefined ? ov.q4 : item.q4);
+  const q4 = ov && ov.q4 !== undefined ? ov.q4 : item.q4;
   const note = ov && ov.note !== undefined ? ov.note : item.note;
 
   let latest_label = null, latest_text = '';
@@ -519,7 +565,7 @@ function recompute(item){
   }
 
   // ตัวชี้วัด 18 ใช้หน่วย tCO2e ไม่ใช่ร้อยละ
-  if(Number(item.no) === 18){
+  if(Number(item.no) === 18 && !q4){
     latest_label = q3 ? 'ไตรมาสที่ 3' : (q2 ? 'ไตรมาสที่ 2' : 'ไตรมาสที่ 1');
     latest_text = q3 || q2 || q1 || '';
     achieved = extractUnitNumber(latest_text, 'tCO2e');
@@ -872,10 +918,12 @@ document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
 document.getElementById('editModal').addEventListener('click', (e)=>{ if(e.target.id==='editModal') closeEditModal(); });
 
 loadOverrides();
-rebuildData();
-renderAll();
-renderPart3();
-document.getElementById('lastUpdated').textContent = fmtDate(new Date());
+loadCurrentSheet().finally(()=>{
+  if(!kpiData.length) rebuildData();
+  renderAll();
+  renderPart3();
+  document.getElementById('lastUpdated').textContent = fmtDate(new Date());
+});
 </script>
 </body>
 </html>
